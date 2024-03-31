@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "piece.h": "c",
+        "utils.h": "c"
+    }
+}

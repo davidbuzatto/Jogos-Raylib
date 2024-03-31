@@ -1,0 +1,17 @@
+16x25
+RxxxxOxxxxYxGBGxxBxxxxPxx
+ORRxOYOxYYGxxGxxxBxxxxRxx
+RxxxxOxxxxYxxGxxBPBxxPPPx
+xxxxxxxxxxxxxxxxxxxxxxPxx
+RxxxxxOxxxxxYxxxxxGxxxxxx
+ORRRxOYOOxYYGYxGGGBxxxxxx
+RxxxxxOxxxxxYxxxxxGxxxPxx
+xxxxxxxxxxxxxxxxxxxxxPPPx
+RORxxOxxxYxxxGxxxxxxxxRxx
+xRxxOYOxxYxxxGxxxPxxxxPxx
+xRxxxOxxYGYxxGxxPPRPxxxxx
+xRxxxOxxxYxxGBGxxPxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxx
+xRxxxOYOOxYYGYxxxGxxxxPxx
+xRxxxxOxxxxxYxxxxGxxPRPPx
+RORRxxOxxxxxYxxGGBGxxxPxx

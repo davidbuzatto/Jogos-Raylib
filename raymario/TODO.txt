@@ -1,0 +1,11 @@
+create animation structure
+organize and refactor code
+refactor player states
+add audio
+
+implement items
+implement baddies
+implement player dying
+implement stages
+implement propper resource caching
+background parallax (implement camera from scratch?)
