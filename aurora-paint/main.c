@@ -16,7 +16,7 @@ int main( void ) {
 
     GameWindow *gameWindow = createGameWindow(
         740,             // width
-        740,             // height
+        820,             // height
         "Aurora Paint",  // title
         60,              // target FPS
         true,            // antialiasing

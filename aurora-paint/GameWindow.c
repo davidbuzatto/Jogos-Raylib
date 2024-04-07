@@ -85,7 +85,9 @@ void initGameWindow( GameWindow *gameWindow ) {
             SetConfigFlags( FLAG_WINDOW_ALWAYS_RUN );
         }
 
+        SetTraceLogLevel( LOG_ERROR ); 
         InitWindow( gameWindow->width, gameWindow->height, gameWindow->title );
+        SetWindowIcon( LoadImage( "resources/icon.png" ) );
 
         if ( gameWindow->initAudio ) {
             InitAudioDevice();

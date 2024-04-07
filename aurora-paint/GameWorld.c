@@ -13,6 +13,7 @@
 #include "ResourceManager.h"
 #include "Position.h"
 #include "PositionQueue.h"
+#include "utils.h"
 
 #include "raylib.h"
 //#include "raymath.h"
@@ -28,9 +29,8 @@ GameWorld* createGameWorld( void ) {
     GameWorld *gw = (GameWorld*) malloc( sizeof( GameWorld ) );
     *gw = (GameWorld){0};
 
-    gw->image = GenImageColor( GetScreenWidth(), GetScreenHeight(), RAYWHITE );
-    gw->textureQueue = NULL;
-    gw->previousTextureFromQueue = (Texture2D){0};
+    gw->image = GenImageColor( GetScreenWidth(), GetScreenHeight(), WHITE );
+    gw->positionQueue = NULL;
     gw->selectedPaletteButtonIndex = 0;
     gw->hoverPaletteButtonIndex = -1;
 
@@ -43,47 +43,51 @@ GameWorld* createGameWorld( void ) {
     };
     gw->paletteOverlayColor = Fade( BLACK, 0.5f );
 
-    int xIni = 50;
-    int yIni = 50;
-    int radius = 30;
-    int spacing = 20;
+    int xIni = 25;
+    int yIni = 25;
+    int radius = 18;
+    int spacing = 10;
     Color palleteColors[GAME_WORLD_PALETTE_BUTTON_QUANTITY] = {
-        BLACK,
-        RED,
-        ORANGE,
+        WHITE,
+        LIGHTGRAY,
+        GRAY,
+        DARKGRAY,
+        (Color){ 1, 1, 1, 255 }, // almost black :D
         YELLOW,
-        GREEN, 
-        BLUE, 
+        GOLD,
+        ORANGE,
+        PINK,
+        MAGENTA,
+        RED,
+        MAROON,
+        GREEN,
+        LIME,
+        DARKGREEN,
+        SKYBLUE,
+        BLUE,
         DARKBLUE,
+        PURPLE,
         VIOLET,
-        WHITE
+        DARKPURPLE,
+        BEIGE,
+        BROWN,
+        DARKBROWN
     };
 
     for ( int i = 0; i < GAME_WORLD_PALETTE_BUTTON_QUANTITY; i++ ) {
         gw->paletteButtons[i] = (PaletteButton){
             .pos = {
-                .x = xIni + ( radius * 2 + spacing ) * i,
-                .y = yIni
+                .x = xIni + ( radius * 2 + spacing ) * (i%12),
+                .y = yIni + ( radius * 2 + spacing ) * (i/12)
             },
-            .radius = 30,
+            .radius = radius,
             .color = palleteColors[i]
         };
     }
 
     // test initial drawing
-    for ( int i = 0; i < 200; i++ ) {
-        int radius = GetRandomValue( 10, 50 );
-        int x = GetRandomValue( radius + 10, GetScreenWidth() - radius - 10 );
-        int y = GetRandomValue( radius + gw->paletteOverlay.height, GetScreenHeight() - radius - 10 );
-        ImageDrawCircle( 
-            &gw->image, x, y, radius, 
-            ColorFromHSV( 
-                GetRandomValue( 0, 360 ), 
-                1, 
-                GetRandomValue( 60, 100 ) / 100.0f
-            )
-        );
-    }
+    //createDummyImage( &gw->image, gw->paletteOverlay.height );
+    loadAndPrepareImage( &gw->image, "resources/images/superMario.png", gw->paletteOverlay.height );
 
     updateTexture( gw );
 
@@ -117,22 +121,34 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         
         bool paletteClicked = false;
 
-        for ( int i = 0; i < GAME_WORLD_PALETTE_BUTTON_QUANTITY; i++ ) {
-            if ( checkCollisionPaletteButtonMouse( &gw->paletteButtons[i], &mousePos ) ) {
-                gw->selectedPaletteButtonIndex = i;
-                paletteClicked = true;
-                break;
+        if ( gw->positionQueue == NULL ) {
+
+            for ( int i = 0; i < GAME_WORLD_PALETTE_BUTTON_QUANTITY; i++ ) {
+                if ( checkCollisionPaletteButtonMouse( &gw->paletteButtons[i], &mousePos ) ) {
+                    gw->selectedPaletteButtonIndex = i;
+                    paletteClicked = true;
+                    break;
+                }
             }
+
+            paletteClicked = CheckCollisionPointRec( mousePos, gw->paletteOverlay );
+
         }
 
-        paletteClicked = CheckCollisionPointRec( mousePos, gw->paletteOverlay );
-
-        if ( !paletteClicked ) {
-            if ( gw->textureQueue == NULL ) {
-                colorize( gw, &mousePos, gw->paletteButtons[gw->selectedPaletteButtonIndex].color );
-            }
+        if ( !paletteClicked && gw->positionQueue == NULL ) {
+            colorizeStepByStep( gw, &mousePos, gw->paletteButtons[gw->selectedPaletteButtonIndex].color );
         }
 
+    }
+
+    // generates new image and load new texture
+    if ( gw->positionQueue != NULL ) {
+        colorizeStepByStep( gw, &mousePos, gw->paletteButtons[gw->selectedPaletteButtonIndex].color );
+    }
+
+    if ( gw->positionQueue != NULL && isPositionQueueEmpty( gw->positionQueue ) ) {
+        destroyPositionQueue( gw->positionQueue );
+        gw->positionQueue = NULL;
     }
 
 }
@@ -145,21 +161,7 @@ void drawGameWorld( GameWorld *gw ) {
     BeginDrawing();
     ClearBackground( WHITE );
 
-    if ( gw->textureQueue != NULL && !isTextureQueueEmpty( gw->textureQueue ) ) {
-        
-        dequeueTextureQueue( gw->textureQueue, &gw->currentTextureFromQueue );
-        DrawTexture( gw->currentTextureFromQueue, 0, 0, WHITE );
-
-        UnloadTexture( gw->previousTextureFromQueue );
-        gw->previousTextureFromQueue = gw->currentTextureFromQueue;
-
-    } else {
-        if ( gw->textureQueue != NULL ) {
-            destroyTextureQueue( gw->textureQueue );
-        }
-        gw->textureQueue = NULL;
-        DrawTexture( gw->texture, 0, 0, WHITE );
-    }
+    DrawTexture( gw->texture, 0, 0, WHITE );
 
     // gui
     DrawRectangleRec( gw->paletteOverlay, gw->paletteOverlayColor );
@@ -180,16 +182,74 @@ void updateTexture( GameWorld *gw ) {
     gw->texture = LoadTextureFromImage( gw->image );
 }
 
-void colorize( GameWorld *gw, Vector2 *pos, Color newColor ) {
+void colorizeStepByStep( GameWorld *gw, Vector2 *pos, Color newColor ) {
 
     Image *img = &gw->image;
-    int positionColorValue = ColorToInt( GetImageColor( *img, pos->x, pos->y ) );
     int newColorValue = ColorToInt( newColor );
 
-    if ( positionColorValue != newColorValue ) {
-        //colorizeDFS( gw, img, pos->x, pos->y, positionColorValue, &newColor );
-        //colorizeBFS( gw, img, pos->x, pos->y, positionColorValue, &newColor );
-        gw->textureQueue = colorizeBFSFrames( gw, img, pos->x, pos->y, positionColorValue, &newColor, 100 );
+    if ( gw->positionQueue == NULL ) {
+        gw->searchColorValue = ColorToInt( GetImageColor( *img, pos->x, pos->y ) );
+    }
+
+    if ( gw->searchColorValue != newColorValue && gw->searchColorValue != 0x000000ff ) {
+        colorizeBFSFramesStepByStep( gw, img, pos->x, pos->y, gw->searchColorValue, &newColor, 500 );
+    }
+
+}
+
+void colorizeBFSFramesStepByStep( GameWorld *gw, Image *img, int x, int y, int searchColorValue, Color* newColor, int pixelQuantityPerFrame ) {
+    
+    PositionQueue *positionQueue;
+    int coloredPixels = 0;
+
+    // only multiples of 4
+    pixelQuantityPerFrame -= pixelQuantityPerFrame % 4;
+
+    if ( gw->positionQueue == NULL ) {
+        positionQueue = createPositionQueue();
+        gw->positionQueue = positionQueue;
+        enqueuePositionQueue( positionQueue, (Position){ x, y } );
+    } else {
+        positionQueue = gw->positionQueue;
+    }
+
+    while ( !isPositionQueueEmpty( positionQueue ) ) {
+
+        Position current;
+        dequeuePositionQueue( positionQueue, &current );
+
+        if ( validatePosition( img, current.x, current.y ) ) {
+
+            int currentColor = ColorToInt( GetImageColor( *img, current.x, current.y ) );
+
+            if ( currentColor == searchColorValue ) {
+
+                enqueuePositionQueue( positionQueue, (Position){ current.x+1, current.y });
+                enqueuePositionQueue( positionQueue, (Position){ current.x, current.y+1 });
+                enqueuePositionQueue( positionQueue, (Position){ current.x-1, current.y });
+                enqueuePositionQueue( positionQueue, (Position){ current.x, current.y-1 });
+
+                /*enqueuePositionQueue( positionQueue, (Position){ current.x+1, current.y+1 });
+                enqueuePositionQueue( positionQueue, (Position){ current.x-1, current.y+1 });
+                enqueuePositionQueue( positionQueue, (Position){ current.x-1, current.y-1 });
+                enqueuePositionQueue( positionQueue, (Position){ current.x+1, current.y-1 });*/
+
+                ImageDrawPixel( img, current.x, current.y, *newColor );
+                coloredPixels++;
+
+                if ( coloredPixels == pixelQuantityPerFrame ) {
+                    updateTexture( gw );
+                    coloredPixels = 0;
+                    break;
+                }
+
+            }
+
+        }
+
+    }
+
+    if ( coloredPixels > 0 ) {
         updateTexture( gw );
     }
 
@@ -237,56 +297,6 @@ void colorizeBFS( GameWorld *gw, Image *img, int x, int y, int searchColor, Colo
     }
 
     destroyPositionQueue( positionQueue );
-
-}
-
-TextureQueue *colorizeBFSFrames( GameWorld *gw, Image *img, int x, int y, int searchColor, Color* newColor, int pixelQuantityPerFrame ) {
-
-    PositionQueue *positionQueue = createPositionQueue();
-    enqueuePositionQueue( positionQueue, (Position){ x, y } );
-
-    TextureQueue *textureQueue = createTextureQueue();
-    int coloredPixels = 0;
-    int frameQuantity = 0;
-
-    while ( !isPositionQueueEmpty( positionQueue ) ) {
-
-        Position current;
-        dequeuePositionQueue( positionQueue, &current );
-
-        if ( validatePosition( img, current.x, current.y ) ) {
-
-            int currentColor = ColorToInt( GetImageColor( *img, current.x, current.y ) );
-
-            if ( currentColor == searchColor ) {
-
-                ImageDrawPixel( img, current.x, current.y, *newColor );
-                coloredPixels++;
-
-                if ( coloredPixels == pixelQuantityPerFrame ) {
-                    enqueueTextureQueue( textureQueue, LoadTextureFromImage( *img ) );
-                    coloredPixels = 0;
-                    frameQuantity++;
-                }
-
-                enqueuePositionQueue( positionQueue, (Position){ current.x+1, current.y });
-                enqueuePositionQueue( positionQueue, (Position){ current.x, current.y+1 });
-                enqueuePositionQueue( positionQueue, (Position){ current.x-1, current.y });
-                enqueuePositionQueue( positionQueue, (Position){ current.x, current.y-1 });
-
-            }
-
-        }
-
-    }
-
-    if ( coloredPixels > 0 ) {
-        enqueueTextureQueue( textureQueue, LoadTextureFromImage( *img ) );
-        frameQuantity++;
-    }
-
-    destroyPositionQueue( positionQueue );
-    return textureQueue;
 
 }
 

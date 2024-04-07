@@ -4,14 +4,14 @@
 
 void drawPaletteButton( PaletteButton *btn, bool selectedHighlight, bool hoverHighlight ) {
     if ( selectedHighlight ) {
-        DrawCircle( btn->pos.x, btn->pos.y, btn->radius, WHITE );
+        DrawCircleSector( (Vector2){btn->pos.x, btn->pos.y}, btn->radius, 0, 360, 30, WHITE );
     } else if ( hoverHighlight ) {
         Vector3 c = ColorToHSV( btn->color );
-        DrawCircle( btn->pos.x, btn->pos.y, btn->radius, ColorFromHSV( c.x, c.y, c.z * 0.5 ) );
+        DrawCircleSector( (Vector2){btn->pos.x, btn->pos.y}, btn->radius, 0, 360, 30, ColorFromHSV( c.x, c.y, c.z * 0.5 ) );
     } else {
-        DrawCircle( btn->pos.x, btn->pos.y, btn->radius, BLACK );
+        DrawCircleSector( (Vector2){btn->pos.x, btn->pos.y}, btn->radius, 0, 360, 30, BLACK );
     }
-    DrawCircle( btn->pos.x, btn->pos.y, btn->radius - 3, btn->color );
+    DrawCircleSector( (Vector2){btn->pos.x, btn->pos.y}, btn->radius - 2, 0, 360, 30,  btn->color );
 }
 
 bool checkCollisionPaletteButtonMouse( PaletteButton *btn, Vector2 *mousePos ) {
