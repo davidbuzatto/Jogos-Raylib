@@ -1,4 +1,4 @@
-# Custom build script.
+# Custom build script (windows powershell).
 #
 # Usage:
 #    .\build.ps1: clean, compile and run
@@ -19,7 +19,6 @@ param(
 );
 
 $CurrentFolderName = Split-Path -Path (Get-Location) -Leaf
-#$CompiledFile = "game.exe"
 $CompiledFile = "$CurrentFolderName.exe"
 
 $all = $false
@@ -42,11 +41,13 @@ if ( $compile -or $cleanAndCompile -or $compileAndRun -or $all ) {
         -O1 `
         -Wall `
         -Wextra `
+        -Wno-unused-parameter `
         -pedantic-errors `
         -std=c99 `
         -Wno-missing-braces `
         -I include/ `
-        -L lib/ `
+        -I ../raylib/include/ `
+        -L ../raylib/lib/ `
         -lraylib `
         -lopengl32 `
         -lgdi32 `

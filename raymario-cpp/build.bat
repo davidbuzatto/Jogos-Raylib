@@ -72,7 +72,7 @@ GOTO nextStep
 
 :compile
 ECHO Compiling...
-gcc *.c -o %CompiledFile% -O1 -Wall -Wextra -Wno-unused-parameter -pedantic-errors -std=c99 -Wno-missing-braces -I include/ -I ../raylib/include -L ../raylib/lib/ -lraylib -lopengl32 -lgdi32 -lwinmm
+g++ *.cpp -o %CompiledFile% -O1 -Wall -Wextra -Wno-unused-parameter -pedantic-errors -std=c++23 -Wno-missing-braces -I include/ -I include/external -I ../raylib/include -L ../raylib/lib/ -lraylib -lopengl32 -lgdi32 -lwinmm
 GOTO nextStep
 
 :run

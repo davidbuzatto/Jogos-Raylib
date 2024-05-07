@@ -1,4 +1,4 @@
-# Custom build script.
+# Custom build script (windows powershell).
 #
 # Usage:
 #    .\build.ps1: clean, compile and run
@@ -45,10 +45,10 @@ if ( $compile -or $cleanAndCompile -or $compileAndRun -or $all ) {
         -pedantic-errors `
         -std=c++23 `
         -Wno-missing-braces `
-        -Wno-missing-field-initializers `
-        -Wno-enum-compare `
         -I include/ `
-        -L lib/ `
+        -I include/external `
+        -I ../raylib/include/ `
+        -L ../raylib/lib/ `
         -lraylib `
         -lopengl32 `
         -lgdi32 `
