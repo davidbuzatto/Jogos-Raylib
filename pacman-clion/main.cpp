@@ -12,8 +12,8 @@ int main() {
 
     GameWindow gameWindow( 
         800,             // width
-        450,             // height
-        "Window Title",  // title
+        600,             // height
+        "Pacman",        // title
         60,              // target FPS
         true,            // antialiasing
         false,           // resizable

@@ -27,8 +27,15 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_executable(${PROJECT_NAME} main.cpp
         GameWindow.cpp
+        include/GameWindow.h
         GameWorld.cpp
+        include/GameWorld.h
         ResourceManager.cpp
-        utils.cpp)
+        include/ResourceManager.h
+        utils.cpp
+        include/utils.h
+        Pacman.cpp
+        include/Pacman.h
+        include/PacmanState.h)
 
 target_link_libraries(${PROJECT_NAME} raylib)

@@ -9,11 +9,13 @@
 #pragma once
 
 #include "Drawable.h"
+#include "Pacman.h"
 
 class GameWorld : public virtual Drawable {
 
     // private GameWorld attributes
-    
+    Pacman pacman;
+
 public:
 
     /**
@@ -48,5 +50,5 @@ public:
      * after the game loop ends.
      */
     static void unloadResources();
-    
+
 };

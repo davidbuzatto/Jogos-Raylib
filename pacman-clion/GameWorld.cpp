@@ -10,6 +10,8 @@
 
 #include "include/GameWorld.h"
 #include "include/ResourceManager.h"
+#include "include/Pacman.h"
+#include "include/PacmanState.h"
 
 #include "raylib.h"
 #include "raymath.h"
@@ -20,7 +22,11 @@
 /**
  * @brief Construct a new GameWorld object
  */
-GameWorld::GameWorld() = default;
+GameWorld::GameWorld() :
+           pacman( (Vector2){ 100, 100 }, 300, 40 ) {
+
+}
+
 
 /**
  * @brief Destroy the GameWorld object
@@ -32,6 +38,18 @@ GameWorld::~GameWorld() = default;
  */
 void GameWorld::inputAndUpdate() {
 
+    if ( IsKeyPressed( KEY_LEFT ) ) {
+        pacman.setState( PacmanState::GOING_TO_LEFT );
+    } else if ( IsKeyPressed( KEY_RIGHT ) ) {
+        pacman.setState( PacmanState::GOING_TO_RIGHT );
+    } else if ( IsKeyPressed( KEY_UP ) ) {
+        pacman.setState( PacmanState::GOING_TO_UP );
+    } else if ( IsKeyPressed( KEY_DOWN ) ) {
+        pacman.setState( PacmanState::GOING_TO_DOWN );
+    }
+
+    pacman.update();
+
 }
 
 /**
@@ -40,16 +58,9 @@ void GameWorld::inputAndUpdate() {
 void GameWorld::draw() {
 
     BeginDrawing();
-    ClearBackground( WHITE );
+    ClearBackground( BLACK );
 
-    const char *text = "Basic game template";
-    Vector2 m = MeasureTextEx( GetFontDefault(), text, 40, 4 );
-    int x = GetScreenWidth() / 2 - m.x / 2;
-    int y = GetScreenHeight() / 2 - m.y / 2;
-    DrawRectangle( x, y, m.x, m.y, BLACK );
-    DrawText( text, x, y, 40, WHITE );
-
-    DrawFPS( 20, 20 );
+    pacman.draw();
 
     EndDrawing();
 
