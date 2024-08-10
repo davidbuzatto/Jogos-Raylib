@@ -1,14 +1,23 @@
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include "GameWorld.h"
-#include "Ground.h"
-#include "Wall.h"
+#include "Block.h"
 #include "Player.h"
 #include "raylib.h"
 
 void drawPlayer( Player *player ) {
+    
+    //DrawCubeV( player->cpLeft.pos, player->cpLeft.dim, BLUE );
+    //DrawCubeV( player->cpRight.pos, player->cpRight.dim, GREEN );
+    //DrawCubeV( player->cpBottom.pos, player->cpBottom.dim, RED );
+    //DrawCubeV( player->cpTop.pos, player->cpTop.dim, PINK );
+    //DrawCubeV( player->cpFar.pos, player->cpFar.dim, YELLOW );
+    //DrawCubeV( player->cpNear.pos, player->cpNear.dim, WHITE );
+
     DrawCubeV( player->pos, player->dim, player->color );
     DrawCubeWiresV( player->pos, player->dim, BLACK );
+
 }
 
 void updatePlayer( Player *player ) {
@@ -23,6 +32,52 @@ void updatePlayer( Player *player ) {
 
 }
 
+void updatePlayerCollisionProbes( Player *player ) {
+
+    player->cpLeft.pos =
+        (Vector3){ 
+            player->pos.x - player->dim.x / 2 + player->cpLeft.dim.x / 2, 
+            player->pos.y, 
+            player->pos.z
+        };
+
+    player->cpRight.pos =
+        (Vector3){ 
+            player->pos.x + player->dim.x / 2 - player->cpRight.dim.x / 2, 
+            player->pos.y, 
+            player->pos.z
+        };
+
+    player->cpBottom.pos =
+        (Vector3){ 
+            player->pos.x, 
+            player->pos.y - player->dim.y / 2 + player->cpBottom.dim.y / 2, 
+            player->pos.z
+        };
+
+    player->cpTop.pos =
+        (Vector3){ 
+            player->pos.x, 
+            player->pos.y + player->dim.y / 2 - player->cpTop.dim.y / 2, 
+            player->pos.z
+        };
+
+    player->cpFar.pos =
+        (Vector3){ 
+            player->pos.x, 
+            player->pos.y, 
+            player->pos.z - player->dim.z / 2 + player->cpFar.dim.z / 2
+        };
+
+    player->cpNear.pos =
+        (Vector3){ 
+            player->pos.x, 
+            player->pos.y, 
+            player->pos.z + player->dim.z / 2 - player->cpNear.dim.z / 2
+        };
+
+}
+
 void jumpPlayer( Player *player ) {
     if ( !player->jumping ) {
         player->jumping = true;
@@ -30,41 +85,55 @@ void jumpPlayer( Player *player ) {
     }
 }
 
-bool checkCollisionPlayerGround( Player *player, Ground *ground ) {
+Block* checkCollisionPlayerGround( Player *player, Block *groundBlocks, int groundBlocksQuantity ) {
 
-    BoundingBox bbPlayer = {
-        .min = {
-            .x = player->pos.x - player->dim.x / 2,
-            .y = player->pos.y - player->dim.y / 2,
-            .z = player->pos.z - player->dim.z / 2
-        },
-        .max = {
-            .x = player->pos.x + player->dim.x / 2,
-            .y = player->pos.y + player->dim.y / 2,
-            .z = player->pos.z + player->dim.z / 2,
-        },
-    };
+    BoundingBox bbPlayer = getBlockBoundingBox( &player->cpBottom );
 
-    BoundingBox bbGround = {
-        .min = {
-            .x = ground->pos.x - ground->dim.x / 2,
-            .y = ground->pos.y - ground->dim.y / 2,
-            .z = ground->pos.z - ground->dim.z / 2
-        },
-        .max = {
-            .x = ground->pos.x + ground->dim.x / 2,
-            .y = ground->pos.y + ground->dim.y / 2,
-            .z = ground->pos.z + ground->dim.z / 2,
-        },
-    };
+    for ( int i = 0; i < groundBlocksQuantity; i++ ) {
+        if ( CheckCollisionBoxes( bbPlayer, getBlockBoundingBox( &groundBlocks[i] ) ) ) {
+            return &groundBlocks[i];
+        }
+    }
 
-    return CheckCollisionBoxes( bbPlayer, bbGround );
+    return NULL;
 
 }
 
-bool checkCollisionPlayerWall( Player *player, Wall *wall ) {
+/*bool checkCollisionPlayerWall( Player *player, Wall *wall ) {
+    return CheckCollisionBoxes( getPlayerBoundingBox( player ), getWallBoudingBox( wall ) );
+}*/
 
-    BoundingBox bbPlayer = {
+PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, bool checkCollisionProbes ) {
+
+    BoundingBox playerBB = getPlayerBoundingBox( player );
+    BoundingBox blockBB = getBlockBoundingBox( block );
+
+    if ( checkCollisionProbes ) {
+
+        if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpLeft ), blockBB ) ) {
+            return PLAYER_COLLISION_LEFT;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpRight ), blockBB ) ) {
+            return PLAYER_COLLISION_RIGHT;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpBottom ), blockBB ) ) {
+            return PLAYER_COLLISION_BOTTOM;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpTop ), blockBB ) ) {
+            return PLAYER_COLLISION_TOP;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpFar ), blockBB ) ) {
+            return PLAYER_COLLISION_FAR;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpNear ), blockBB ) ) {
+            return PLAYER_COLLISION_NEAR;
+        }
+
+    } else if ( CheckCollisionBoxes( playerBB, blockBB ) ) {
+        return PLAYER_COLLISION_ALL;
+    }
+
+    return PLAYER_COLLISION_NONE;
+
+}
+
+BoundingBox getPlayerBoundingBox( Player *player ) {
+    return (BoundingBox) {
         .min = {
             .x = player->pos.x - player->dim.x / 2,
             .y = player->pos.y - player->dim.y / 2,
@@ -76,20 +145,4 @@ bool checkCollisionPlayerWall( Player *player, Wall *wall ) {
             .z = player->pos.z + player->dim.z / 2,
         },
     };
-
-    BoundingBox bbWall = {
-        .min = {
-            .x = wall->pos.x - wall->dim.x / 2,
-            .y = wall->pos.y - wall->dim.y / 2,
-            .z = wall->pos.z - wall->dim.z / 2
-        },
-        .max = {
-            .x = wall->pos.x + wall->dim.x / 2,
-            .y = wall->pos.y + wall->dim.y / 2,
-            .z = wall->pos.z + wall->dim.z / 2,
-        },
-    };
-
-    return CheckCollisionBoxes( bbPlayer, bbWall );
-
 }

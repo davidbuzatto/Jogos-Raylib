@@ -8,8 +8,7 @@
 #pragma once
 
 #include "Player.h"
-#include "Ground.h"
-#include "Wall.h"
+#include "Block.h"
 #include "raylib.h"
 
 extern const float GRAVITY;
@@ -20,11 +19,16 @@ typedef struct GameWorld {
     
     Player player;
 
-    Ground ground;
-    Wall leftWall;
-    Wall rightWall;
-    Wall farWall;
-    Wall nearWall;
+    Block *groundBlocks;
+    int groundBlocksQuantity;
+
+    Block *obstacles;
+    int obstablesQuantity;
+
+    Block leftWall;
+    Block rightWall;
+    Block farWall;
+    Block nearWall;
 
 } GameWorld;
 
@@ -49,5 +53,5 @@ void inputAndUpdateGameWorld( GameWorld *gw );
 void drawGameWorld( GameWorld *gw );
 
 void updateCameraTarget( GameWorld *gw, Player *player );
-void updateCameraPosition( GameWorld *gw, Player *player );
+void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset );
 void showCameraInfo( Camera3D *camera, int x, int y );
