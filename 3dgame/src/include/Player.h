@@ -27,6 +27,8 @@ typedef struct Player {
 
     bool jumping;
     Color color;
+    bool showWiresOnly;
+    bool showCollisionProbes;
 
     // cp = collision probe
     Block cpLeft;

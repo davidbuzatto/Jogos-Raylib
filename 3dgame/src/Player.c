@@ -8,14 +8,19 @@
 
 void drawPlayer( Player *player ) {
     
-    //DrawCubeV( player->cpLeft.pos, player->cpLeft.dim, BLUE );
-    //DrawCubeV( player->cpRight.pos, player->cpRight.dim, GREEN );
-    //DrawCubeV( player->cpBottom.pos, player->cpBottom.dim, RED );
-    //DrawCubeV( player->cpTop.pos, player->cpTop.dim, PINK );
-    //DrawCubeV( player->cpFar.pos, player->cpFar.dim, YELLOW );
-    //DrawCubeV( player->cpNear.pos, player->cpNear.dim, WHITE );
+    if ( player->showCollisionProbes ) {
+        drawBlock( &player->cpLeft );
+        drawBlock( &player->cpRight );
+        drawBlock( &player->cpBottom );
+        drawBlock( &player->cpTop );
+        drawBlock( &player->cpFar );
+        drawBlock( &player->cpNear );
+    }
 
-    DrawCubeV( player->pos, player->dim, player->color );
+    if ( !player->showWiresOnly ) {
+        DrawCubeV( player->pos, player->dim, player->color );
+    }
+
     DrawCubeWiresV( player->pos, player->dim, BLACK );
 
 }
