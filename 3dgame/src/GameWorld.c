@@ -9,14 +9,17 @@
 /**
  * TODO:
  *   - Rotação da câmera como em um jogo padrão;
- *   - Movimentação usando um ângulo de ataque (mais fácil se testado usando joystick);
+ *   - Movimentação usando um ângulo de ataque (mais fácil se testado usando joystick); OK
+ *       - Adaptar para a movimentação ser igual ao do joystick nas teclas.
  *   - "Bug" do pulo. Definir estados para o jogador (pulando/subindo, caindo, andando, morrendo etc.);
  *   - Simplificar o chão (usar apenas um bloco);
  *   - Detectar colisão apenas de objetos que estão perto do jogador;
+ *   - Subsistema de colisão parece estar implementado suficientemente!
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "GameWorld.h"
 #include "ResourceManager.h"
@@ -71,8 +74,16 @@ GameWorld* createGameWorld( void ) {
         .jumpSpeed = 20.0f,
         .jumping = false,
         .color = Fade( BLUE, 0.8f ),
-        .showWiresOnly = true,
-        .showCollisionProbes = true,
+        .showWiresOnly = false,
+        .showCollisionProbes = false,
+
+        .mesh = { 0 },
+        .model = { 0 },
+        .rotationAxis = { 0.0f, 1.0f, 0.0f },
+        .rotationAngle = 0.0f,
+        .rotationVel = 0.0f,
+        .rotationSpeed = 150.0f,
+        .scale = { 1.0f, 1.0f, 1.0f },
 
         .cpLeft = { .visible = true },
         .cpRight = { .visible = true  },
@@ -99,6 +110,8 @@ GameWorld* createGameWorld( void ) {
     gw->player.cpTop.color = GRAY;
     gw->player.cpFar.color = YELLOW;
     gw->player.cpNear.color = WHITE;
+
+    createPlayerModel( &gw->player );
 
     float blockSize = 2.0f;
     int lines = 10;
@@ -248,6 +261,7 @@ GameWorld* createGameWorld( void ) {
 void destroyGameWorld( GameWorld *gw ) {
     free( gw->groundBlocks );
     free( gw->obstacles );
+    destroyPlayerModel( &gw->player );
     free( gw );
 }
 
@@ -276,23 +290,58 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         zCam += 1;
     }
 
+    // keyboard movement
     if ( IsKeyDown( KEY_W ) ) {
-        player->vel.z = -player->speed;
+        //player->vel.z = -player->speed;
+        player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed;
+        player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed;
     } else if ( IsKeyDown( KEY_S ) ) {
-        player->vel.z = player->speed;
+        //player->vel.z = player->speed;
+        player->vel.x = -cos( DEG2RAD * player->rotationAngle ) * player->speed;
+        player->vel.z = sin( DEG2RAD * player->rotationAngle ) * player->speed;
     } else {
+        //player->vel.z = 0.0f;
+        player->vel.x = 0.0f;
         player->vel.z = 0.0f;
     }
 
     if ( IsKeyDown( KEY_A ) ) {
-        player->vel.x = -player->speed;
+        //player->vel.x = -player->speed;
+        player->rotationVel = player->rotationSpeed;
     } else if ( IsKeyDown( KEY_D ) ) {
-        player->vel.x = player->speed;
+        //player->vel.x = player->speed;
+        player->rotationVel = -player->rotationSpeed;
     } else {
-        player->vel.x = 0.0f;
+        //player->vel.x = 0.0f;
+        player->rotationVel = 0.0f;
     }
 
     if ( IsKeyPressed( KEY_SPACE ) ) {
+        jumpPlayer( player );
+    }
+
+    // joystick
+    const int gamepadId = 0;
+
+    // tank
+    /*float gpx = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
+    float gpy = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+
+    player->rotationVel = player->rotationSpeed * gpx;
+    player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed * gpy;
+    player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed * gpy;*/
+
+    // standard
+    float gpx = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
+    float gpy = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+
+    player->vel.x = player->speed * gpx;
+    player->vel.z = player->speed * gpy;
+    if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
+        player->rotationAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
+    }
+
+    if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
         jumpPlayer( player );
     }
 

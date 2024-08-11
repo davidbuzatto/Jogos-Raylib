@@ -18,10 +18,10 @@ void drawPlayer( Player *player ) {
     }
 
     if ( !player->showWiresOnly ) {
-        DrawCubeV( player->pos, player->dim, player->color );
+        DrawModelEx( player->model, player->pos, player->rotationAxis, player->rotationAngle, player->scale, WHITE );
     }
 
-    DrawCubeWiresV( player->pos, player->dim, BLACK );
+    DrawModelWiresEx( player->model, player->pos, player->rotationAxis, player->rotationAngle, player->scale, BLACK );
 
 }
 
@@ -34,6 +34,8 @@ void updatePlayer( Player *player ) {
     player->pos.z += player->vel.z * delta;
 
     player->vel.y -= GRAVITY * delta;
+
+    player->rotationAngle += player->rotationVel * delta;
 
 }
 
@@ -150,4 +152,22 @@ BoundingBox getPlayerBoundingBox( Player *player ) {
             .z = player->pos.z + player->dim.z / 2,
         },
     };
+}
+
+void createPlayerModel( Player *player ) {
+
+    player->mesh = GenMeshCube( player->dim.x, player->dim.y, player->dim.z );
+    player->model = LoadModelFromMesh( player->mesh );
+
+    Image img = GenImageChecked( 2, 2, 1, 1, BLUE, DARKBLUE );
+    Texture2D texture = LoadTextureFromImage( img );
+    UnloadImage( img );
+
+    player->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+
+}
+
+void destroyPlayerModel( Player *player ) {
+    UnloadModel( player->model );
+    UnloadMesh( player->mesh );
 }

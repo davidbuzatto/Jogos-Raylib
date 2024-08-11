@@ -30,6 +30,14 @@ typedef struct Player {
     bool showWiresOnly;
     bool showCollisionProbes;
 
+    Mesh mesh;
+    Model model;
+    Vector3 rotationAxis;
+    float rotationAngle;
+    float rotationVel;
+    float rotationSpeed;
+    Vector3 scale;
+
     // cp = collision probe
     Block cpLeft;
     Block cpRight;
@@ -51,3 +59,5 @@ void jumpPlayer( Player *player );
 Block* checkCollisionPlayerGround( Player *player, Block *groundBlocks, int groundBlocksQuantity );
 PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, bool checkCollisionProbes );
 BoundingBox getPlayerBoundingBox( Player *player );
+void createPlayerModel( Player *player );
+void destroyPlayerModel( Player *player );
