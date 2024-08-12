@@ -18,9 +18,8 @@ typedef struct GameWorld {
     Camera3D camera;
     
     Player player;
-
-    Block *groundBlocks;
-    int groundBlocksQuantity;
+    
+    Block ground;
 
     Block *obstacles;
     int obstablesQuantity;
@@ -55,3 +54,5 @@ void drawGameWorld( GameWorld *gw );
 void updateCameraTarget( GameWorld *gw, Player *player );
 void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset );
 void showCameraInfo( Camera3D *camera, int x, int y );
+void createGroundModel( Block *ground );
+void destroyGroundModel( Block *ground );

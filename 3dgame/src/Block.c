@@ -2,9 +2,21 @@
 #include "raylib.h"
 
 void drawBlock( Block *block ) {
+
     if ( block->visible ) {
-        DrawCubeV( block->pos, block->dim, block->color );
-        DrawCubeWiresV( block->pos, block->dim, BLACK );
+
+        if ( block->renderModel ) {
+            DrawModel( block->model, block->pos, 1.0f, WHITE );
+            DrawCubeWiresV( block->pos, block->dim, BLACK );
+        } else {
+            if ( block->renderTouchColor ) {
+                DrawCubeV( block->pos, block->dim, block->touchColor );
+            } else {
+                DrawCubeV( block->pos, block->dim, block->color );
+            }
+            DrawCubeWiresV( block->pos, block->dim, BLACK );
+        }
+
     }
 }
 

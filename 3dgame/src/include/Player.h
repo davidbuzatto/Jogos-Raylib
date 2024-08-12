@@ -13,19 +13,25 @@ typedef enum PlayerCollisionType {
     PLAYER_COLLISION_FAR,
     PLAYER_COLLISION_NEAR,
     PLAYER_COLLISION_ALL,
-    PLAYER_COLLISION_NONE,
+    PLAYER_COLLISION_NONE
 } PlayerCollisionType;
+
+typedef enum PlayerPositionState {
+    PLAYER_POSITION_STATE_ON_GROUND,
+    PLAYER_POSITION_STATE_JUMPING,
+    PLAYER_POSITION_STATE_FALLING
+} PlayerPositionState;
 
 typedef struct Player {
 
     Vector3 pos;
+    Vector3 lastPos;
     Vector3 dim;
     Vector3 vel;
 
     float speed;
     float jumpSpeed;
 
-    bool jumping;
     Color color;
     bool showWiresOnly;
     bool showCollisionProbes;
@@ -50,13 +56,14 @@ typedef struct Player {
     Vector3 cpDimBT;
     Vector3 cpDimFN;
 
+    PlayerPositionState positionState;
+
 } Player;
 
 void drawPlayer( Player *player );
 void updatePlayer( Player *player );
 void updatePlayerCollisionProbes( Player *player );
 void jumpPlayer( Player *player );
-Block* checkCollisionPlayerGround( Player *player, Block *groundBlocks, int groundBlocksQuantity );
 PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, bool checkCollisionProbes );
 BoundingBox getPlayerBoundingBox( Player *player );
 void createPlayerModel( Player *player );

@@ -29,6 +29,8 @@ void updatePlayer( Player *player ) {
 
     float delta = GetFrameTime();
 
+    player->lastPos = player->pos;
+
     player->pos.x += player->vel.x * delta;
     player->pos.y += player->vel.y * delta;
     player->pos.z += player->vel.z * delta;
@@ -36,6 +38,14 @@ void updatePlayer( Player *player ) {
     player->vel.y -= GRAVITY * delta;
 
     player->rotationAngle += player->rotationVel * delta;
+
+    if ( player->pos.y < player->lastPos.y ) {
+        player->positionState = PLAYER_POSITION_STATE_FALLING;
+    } else if ( player->pos.y > player->lastPos.y ) {
+        player->positionState = PLAYER_POSITION_STATE_JUMPING;
+    } else {
+        player->positionState = PLAYER_POSITION_STATE_ON_GROUND;
+    }
 
 }
 
@@ -86,29 +96,10 @@ void updatePlayerCollisionProbes( Player *player ) {
 }
 
 void jumpPlayer( Player *player ) {
-    if ( !player->jumping ) {
-        player->jumping = true;
+    if ( player->positionState == PLAYER_POSITION_STATE_ON_GROUND ) {
         player->vel.y = player->jumpSpeed;
     }
 }
-
-Block* checkCollisionPlayerGround( Player *player, Block *groundBlocks, int groundBlocksQuantity ) {
-
-    BoundingBox bbPlayer = getBlockBoundingBox( &player->cpBottom );
-
-    for ( int i = 0; i < groundBlocksQuantity; i++ ) {
-        if ( CheckCollisionBoxes( bbPlayer, getBlockBoundingBox( &groundBlocks[i] ) ) ) {
-            return &groundBlocks[i];
-        }
-    }
-
-    return NULL;
-
-}
-
-/*bool checkCollisionPlayerWall( Player *player, Wall *wall ) {
-    return CheckCollisionBoxes( getPlayerBoundingBox( player ), getWallBoudingBox( wall ) );
-}*/
 
 PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, bool checkCollisionProbes ) {
 
@@ -168,6 +159,6 @@ void createPlayerModel( Player *player ) {
 }
 
 void destroyPlayerModel( Player *player ) {
+    UnloadTexture( player->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
     UnloadModel( player->model );
-    UnloadMesh( player->mesh );
 }

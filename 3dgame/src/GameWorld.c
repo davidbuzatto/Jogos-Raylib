@@ -8,13 +8,7 @@
 
 /**
  * TODO:
- *   - Rotação da câmera como em um jogo padrão;
- *   - Movimentação usando um ângulo de ataque (mais fácil se testado usando joystick); OK
- *       - Adaptar para a movimentação ser igual ao do joystick nas teclas.
- *   - "Bug" do pulo. Definir estados para o jogador (pulando/subindo, caindo, andando, morrendo etc.);
- *   - Simplificar o chão (usar apenas um bloco);
- *   - Detectar colisão apenas de objetos que estão perto do jogador;
- *   - Subsistema de colisão parece estar implementado suficientemente!
+ *   - Detectar colisão apenas de objetos que estão perto do jogador.
  */
 
 #include <stdio.h>
@@ -48,7 +42,7 @@ GameWorld* createGameWorld( void ) {
 
     GameWorld *gw = (GameWorld*) malloc( sizeof( GameWorld ) );
     Color wallColor = Fade( DARKGREEN, 0.5f );
-    Color obstacleColor = Fade( PURPLE, 0.8f );
+    Color obstacleColor = Fade( LIME, 0.8f );
 
     float cpThickness = 1.0f;
     float cpDiff = 0.7f;
@@ -56,6 +50,11 @@ GameWorld* createGameWorld( void ) {
 
     gw->player = (Player){
         .pos = {
+            .x = 0.0f,
+            .y = 1.0f,
+            .z = 0.0f
+        },
+        .lastPos = {
             .x = 0.0f,
             .y = 1.0f,
             .z = 0.0f
@@ -72,7 +71,6 @@ GameWorld* createGameWorld( void ) {
         },
         .speed = 20.0f,
         .jumpSpeed = 20.0f,
-        .jumping = false,
         .color = Fade( BLUE, 0.8f ),
         .showWiresOnly = false,
         .showCollisionProbes = false,
@@ -93,7 +91,9 @@ GameWorld* createGameWorld( void ) {
         .cpNear = { .visible = true },
         .cpDimLR = { cpThickness, playerThickness - cpDiff, playerThickness - cpDiff },
         .cpDimBT = { playerThickness - cpDiff, cpThickness, playerThickness - cpDiff },
-        .cpDimFN = { playerThickness - cpDiff, playerThickness - cpDiff, cpThickness }
+        .cpDimFN = { playerThickness - cpDiff, playerThickness - cpDiff, cpThickness },
+
+        .positionState = PLAYER_POSITION_STATE_ON_GROUND
 
     };
 
@@ -116,30 +116,25 @@ GameWorld* createGameWorld( void ) {
     float blockSize = 2.0f;
     int lines = 10;
     int columns = 50;
-    float xStart = -( columns / 2 * blockSize );
-    float zStart = -( lines / 2 * blockSize );
 
-    gw->groundBlocksQuantity = lines * columns;
-    gw->groundBlocks = (Block*) malloc( sizeof( Block ) * gw->groundBlocksQuantity );
-    int k = 0;
-    for ( int i = 0; i < lines; i++ ) {
-        for ( int j = 0; j < columns; j++ ) {
-            gw->groundBlocks[k++] = (Block){
-                .pos = {
-                    .x = xStart + blockSize * j,
-                    .y = -1.0f,
-                    .z = zStart + blockSize * i
-                },
-                .dim = {
-                    .x = blockSize, 
-                    .y = blockSize,
-                    .z = blockSize
-                },
-                .color = ORANGE,
-                .visible = true
-            };
-        }
-    }
+    gw->ground = (Block){
+        .pos = {
+            .x = -1.0f,
+            .y = -1.0f,
+            .z = -1.0f
+        },
+        .dim = {
+            .x = columns * blockSize, 
+            .y = blockSize,
+            .z = lines * blockSize
+        },
+        .color = BLACK,
+        .visible = true,
+        .renderModel = false,
+        .renderTouchColor = false
+    };
+
+    createGroundModel( &gw->ground );
 
     gw->obstablesQuantity = 28;
     gw->obstacles = (Block*) malloc( sizeof( Block ) * gw->obstablesQuantity );
@@ -178,7 +173,10 @@ GameWorld* createGameWorld( void ) {
             .pos = positions[i],
             .dim = { blockSize, blockSize, blockSize },
             .color = obstacleColor,
-            .visible = true
+            .touchColor = obstacleColor,
+            .visible = true,
+            .renderModel = false,
+            .renderTouchColor = false
         };
     }
 
@@ -194,7 +192,9 @@ GameWorld* createGameWorld( void ) {
             .z = 20.0f
         },
         .color = wallColor,
-        .visible = true
+        .visible = true,
+        .renderModel = false,
+        .renderTouchColor = false
     };
 
     gw->rightWall = (Block){
@@ -209,7 +209,9 @@ GameWorld* createGameWorld( void ) {
             .z = 20.0f
         },
         .color = wallColor,
-        .visible = true
+        .visible = true,
+        .renderModel = false,
+        .renderTouchColor = false
     };
 
     gw->farWall = (Block){
@@ -224,7 +226,9 @@ GameWorld* createGameWorld( void ) {
             .z = 2.0f
         },
         .color = wallColor,
-        .visible = true
+        .visible = true,
+        .renderModel = false,
+        .renderTouchColor = false
     };
 
     gw->nearWall = (Block){
@@ -239,7 +243,9 @@ GameWorld* createGameWorld( void ) {
             .z = 2.0f
         },
         .color = wallColor,
-        .visible = true
+        .visible = true,
+        .renderModel = false,
+        .renderTouchColor = false
     };
 
     gw->camera = (Camera3D){ 0 };
@@ -259,9 +265,9 @@ GameWorld* createGameWorld( void ) {
  * @brief Destroys a GameWindow object and its dependecies.
  */
 void destroyGameWorld( GameWorld *gw ) {
-    free( gw->groundBlocks );
     free( gw->obstacles );
     destroyPlayerModel( &gw->player );
+    destroyGroundModel( &gw->ground );
     free( gw );
 }
 
@@ -292,27 +298,21 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     // keyboard movement
     if ( IsKeyDown( KEY_W ) ) {
-        //player->vel.z = -player->speed;
         player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed;
         player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed;
     } else if ( IsKeyDown( KEY_S ) ) {
-        //player->vel.z = player->speed;
         player->vel.x = -cos( DEG2RAD * player->rotationAngle ) * player->speed;
         player->vel.z = sin( DEG2RAD * player->rotationAngle ) * player->speed;
     } else {
-        //player->vel.z = 0.0f;
         player->vel.x = 0.0f;
         player->vel.z = 0.0f;
     }
 
     if ( IsKeyDown( KEY_A ) ) {
-        //player->vel.x = -player->speed;
         player->rotationVel = player->rotationSpeed;
     } else if ( IsKeyDown( KEY_D ) ) {
-        //player->vel.x = player->speed;
         player->rotationVel = -player->rotationSpeed;
     } else {
-        //player->vel.x = 0.0f;
         player->rotationVel = 0.0f;
     }
 
@@ -322,27 +322,30 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     // joystick
     const int gamepadId = 0;
+    if ( IsGamepadAvailable( gamepadId ) ) {
 
-    // tank
-    /*float gpx = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
-    float gpy = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+        // tank
+        /*float gpx = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
+        float gpy = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
 
-    player->rotationVel = player->rotationSpeed * gpx;
-    player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed * gpy;
-    player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed * gpy;*/
+        player->rotationVel = player->rotationSpeed * gpx;
+        player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed * gpy;
+        player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed * gpy;*/
 
-    // standard
-    float gpx = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
-    float gpy = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+        // standard
+        float gpx = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
+        float gpy = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
 
-    player->vel.x = player->speed * gpx;
-    player->vel.z = player->speed * gpy;
-    if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
-        player->rotationAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
-    }
+        player->vel.x = player->speed * gpx;
+        player->vel.z = player->speed * gpy;
+        if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
+            player->rotationAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
+        }
 
-    if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
-        jumpPlayer( player );
+        if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
+            jumpPlayer( player );
+        }
+
     }
 
     updatePlayer( player );
@@ -354,30 +357,29 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         switch ( coll ) {
             case PLAYER_COLLISION_LEFT:
                 player->pos.x = obs->pos.x + obs->dim.x / 2 + player->dim.x / 2;
-                obs->color = Fade( player->cpLeft.color, 0.7f );
+                obs->touchColor = Fade( player->cpLeft.color, 0.7f );
                 break;
             case PLAYER_COLLISION_RIGHT:
                 player->pos.x = obs->pos.x - obs->dim.x / 2 - player->dim.x / 2;
-                obs->color = Fade( player->cpRight.color, 0.7f );
+                obs->touchColor = Fade( player->cpRight.color, 0.7f );
                 break;
             case PLAYER_COLLISION_BOTTOM:
                 player->pos.y = obs->pos.y + obs->dim.y / 2 + player->dim.y / 2;
                 player->vel.y = 0.0f;
-                player->jumping = false;
-                obs->color = Fade( player->cpBottom.color, 0.7f );
+                obs->touchColor = Fade( player->cpBottom.color, 0.7f );
                 break;
             case PLAYER_COLLISION_TOP:
                 player->pos.y = obs->pos.y - obs->dim.y / 2 - player->dim.y / 2 - 0.05f;
                 player->vel.y = 0.0f;
-                obs->color = Fade( player->cpTop.color, 0.7f );
+                obs->touchColor = Fade( player->cpTop.color, 0.7f );
                 break;
             case PLAYER_COLLISION_FAR:
                 player->pos.z = obs->pos.z + obs->dim.z / 2 + player->dim.z / 2;
-                obs->color = Fade( player->cpFar.color, 0.7f );
+                obs->touchColor = Fade( player->cpFar.color, 0.7f );
                 break;
             case PLAYER_COLLISION_NEAR:
                 player->pos.z = obs->pos.z - obs->dim.z / 2 - player->dim.z / 2;
-                obs->color = Fade( player->cpNear.color, 0.7f );
+                obs->touchColor = Fade( player->cpNear.color, 0.7f );
                 break;
             case PLAYER_COLLISION_ALL:
             case PLAYER_COLLISION_NONE:
@@ -388,11 +390,9 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     updatePlayerCollisionProbes( player );
 
-    Block *collidedBlock = checkCollisionPlayerGround( player, gw->groundBlocks, gw->groundBlocksQuantity );
-    if ( collidedBlock != NULL ) {
-        player->pos.y = collidedBlock->pos.y + collidedBlock->dim.y / 2 + player->dim.y / 2;
+    if ( checkCollisionPlayerBlock( player, &gw->ground, false ) == PLAYER_COLLISION_ALL ) {
+        player->pos.y = gw->ground.pos.y + gw->ground.dim.y / 2 + player->dim.y / 2;
         player->vel.y = 0.0f;
-        player->jumping = false;
     }
 
     updatePlayerCollisionProbes( player );
@@ -436,6 +436,12 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         player->showCollisionProbes = !player->showCollisionProbes;
     }
 
+    if ( IsKeyPressed( KEY_FIVE ) ) {
+        for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
+            gw->obstacles[i].renderTouchColor = !gw->obstacles[i].renderTouchColor;
+        }
+    }
+
     if ( IsKeyPressed( KEY_R ) ) {
         xCam = 0;
         yCam = 25.0f;
@@ -456,10 +462,7 @@ void drawGameWorld( GameWorld *gw ) {
 
     //DrawGrid( 120, 1.0f );
 
-    for ( int i = 0; i < gw->groundBlocksQuantity; i++ ) {
-        drawBlock( &gw->groundBlocks[i] );
-    }
-
+    drawBlock( &gw->ground );
     drawPlayer( &gw->player );
 
     for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
@@ -505,4 +508,23 @@ void showCameraInfo( Camera3D *camera, int x, int y ) {
 
     DrawText( pos, x, y, 20, BLACK );
 
+}
+
+void createGroundModel( Block *ground ) {
+
+    ground->renderModel = true;
+    ground->mesh = GenMeshCube( ground->dim.x, ground->dim.y, ground->dim.z );
+    ground->model = LoadModelFromMesh( ground->mesh );
+
+    Image img = GenImageChecked( ground->dim.x, ground->dim.z, 2, 2, ORANGE, (Color){ 192, 96, 0, 255 } );
+    Texture2D texture = LoadTextureFromImage( img );
+    UnloadImage( img );
+
+    ground->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+
+}
+
+void destroyGroundModel( Block *ground ) {
+    UnloadTexture( ground->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
+    UnloadModel( ground->model );
 }
