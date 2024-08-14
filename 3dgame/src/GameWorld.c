@@ -35,6 +35,8 @@ float xCam = 0.0f;
 float yCam = 25.0f;
 float zCam = 30.0f;
 
+float firstPersontCameraTargetDist = 10.0f;
+
 /**
  * @brief Creates a dinamically allocated GameWorld struct instance.
  */
@@ -47,6 +49,8 @@ GameWorld* createGameWorld( void ) {
     float cpThickness = 1.0f;
     float cpDiff = 0.7f;
     float playerThickness = 2.0f;
+
+    gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
 
     gw->player = (Player){
         .pos = {
@@ -446,6 +450,18 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         xCam = 0;
         yCam = 25.0f;
         zCam = 30.0f;
+        player->pos = (Vector3){ 0.0, 1.0, 0.0 };
+        player->rotationAngle = 0.0f;
+        updatePlayerCollisionProbes( player );
+        gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+        for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
+            gw->obstacles[i].touchColor = gw->obstacles[i].color;
+        }
+    }
+
+    if ( IsKeyPressed( KEY_F ) ) {
+        int ct = gw->cameraType + 1;
+        gw->cameraType = ct % 3;
     }
 
 }
@@ -476,6 +492,8 @@ void drawGameWorld( GameWorld *gw ) {
         drawBlock( &gw->nearWall );
     }
     
+    //DrawSphere( firstPersonCameraTarget, 1, BLACK );
+
     EndMode3D();
 
     if ( showInfo ) {
@@ -488,13 +506,48 @@ void drawGameWorld( GameWorld *gw ) {
 }
 
 void updateCameraTarget( GameWorld *gw, Player *player ) {
-    gw->camera.target = player->pos;      // Camera looking at point
+
+    float cosa = cos( DEG2RAD * player->rotationAngle );
+    float sina = -sin( DEG2RAD * player->rotationAngle );
+
+    switch ( gw->cameraType ) {
+        case CAMERA_TYPE_THIRD_PERSON_FIXED:
+            gw->camera.target = player->pos;
+            break;
+        case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
+        case CAMERA_TYPE_FIRST_PERSON:
+            gw->camera.target.x = player->pos.x + cosa * firstPersontCameraTargetDist;
+            gw->camera.target.y = player->pos.y + player->dim.y / 2;
+            gw->camera.target.z = player->pos.z + sina * firstPersontCameraTargetDist;
+            break;
+    }
+
 }
 
 void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset ) {
-    gw->camera.position.x = player->pos.x + xOffset;
-    gw->camera.position.y = yOffset;
-    gw->camera.position.z = player->pos.z + zOffset;
+
+    float cosa = cos( DEG2RAD * player->rotationAngle );
+    float sina = -sin( DEG2RAD * player->rotationAngle );
+
+    switch ( gw->cameraType ) {
+        case CAMERA_TYPE_THIRD_PERSON_FIXED:
+            gw->camera.position.x = player->pos.x + xOffset;
+            gw->camera.position.y = yOffset;
+            gw->camera.position.z = player->pos.z + zOffset;
+            break;
+        case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
+            gw->camera.position = player->pos;
+            gw->camera.position.x += cosa * ( -player->dim.x * 4 );
+            gw->camera.position.y += player->dim.y;
+            gw->camera.position.z += sina * ( -player->dim.z * 4 );
+            break;
+        case CAMERA_TYPE_FIRST_PERSON:
+            gw->camera.position = player->pos;
+            gw->camera.position.x += cosa * ( player->dim.x / 2 );
+            gw->camera.position.z += sina * ( player->dim.z / 2 );
+            break;
+    }
+
 }
 
 void showCameraInfo( Camera3D *camera, int x, int y ) {

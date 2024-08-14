@@ -13,9 +13,16 @@
 
 extern const float GRAVITY;
 
+typedef enum CameraType {
+    CAMERA_TYPE_THIRD_PERSON_FIXED,
+    CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER,
+    CAMERA_TYPE_FIRST_PERSON
+} CameraType;
+
 typedef struct GameWorld {
 
     Camera3D camera;
+    CameraType cameraType;
     
     Player player;
     
