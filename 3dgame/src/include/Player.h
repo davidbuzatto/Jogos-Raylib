@@ -39,7 +39,8 @@ typedef struct Player {
     Mesh mesh;
     Model model;
     Vector3 rotationAxis;
-    float rotationAngle;
+    float rotationHorizontalAngle;
+    float rotationVerticalAngle;
     float rotationVel;
     float rotationSpeed;
     Vector3 scale;

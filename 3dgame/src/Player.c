@@ -18,10 +18,10 @@ void drawPlayer( Player *player ) {
     }
 
     if ( !player->showWiresOnly ) {
-        DrawModelEx( player->model, player->pos, player->rotationAxis, player->rotationAngle, player->scale, WHITE );
+        DrawModelEx( player->model, player->pos, player->rotationAxis, player->rotationHorizontalAngle, player->scale, WHITE );
     }
 
-    DrawModelWiresEx( player->model, player->pos, player->rotationAxis, player->rotationAngle, player->scale, BLACK );
+    DrawModelWiresEx( player->model, player->pos, player->rotationAxis, player->rotationHorizontalAngle, player->scale, BLACK );
 
 }
 
@@ -37,7 +37,7 @@ void updatePlayer( Player *player ) {
 
     player->vel.y -= GRAVITY * delta;
 
-    player->rotationAngle += player->rotationVel * delta;
+    player->rotationHorizontalAngle += player->rotationVel * delta;
 
     if ( player->pos.y < player->lastPos.y ) {
         player->positionState = PLAYER_POSITION_STATE_FALLING;

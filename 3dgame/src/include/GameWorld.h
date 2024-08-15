@@ -12,17 +12,20 @@
 #include "raylib.h"
 
 extern const float GRAVITY;
+extern const int CAMERA_TYPE_QUANTITY;
 
 typedef enum CameraType {
     CAMERA_TYPE_THIRD_PERSON_FIXED,
     CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER,
-    CAMERA_TYPE_FIRST_PERSON
+    CAMERA_TYPE_FIRST_PERSON,
+    CAMERA_TYPE_FIRST_PERSON_MOUSE
 } CameraType;
 
 typedef struct GameWorld {
 
     Camera3D camera;
     CameraType cameraType;
+    Vector2 previousMousePos;
     
     Player player;
     

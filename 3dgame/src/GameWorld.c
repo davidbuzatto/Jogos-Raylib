@@ -9,6 +9,9 @@
 /**
  * TODO:
  *   - Detectar colisão apenas de objetos que estão perto do jogador.
+ *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
+ *     deve ser posicionada atrás baseada em um ângulo e mirar em 180 do centro
+ *     do personagem.
  */
 
 #include <stdio.h>
@@ -27,6 +30,7 @@
 //#undef RAYGUI_IMPLEMENTATION     // raygui.h
 
 const float GRAVITY = 50.0f;
+const int CAMERA_TYPE_QUANTITY = 4;
 
 bool showInfo = false;
 bool drawWalls = false;
@@ -35,7 +39,7 @@ float xCam = 0.0f;
 float yCam = 25.0f;
 float zCam = 30.0f;
 
-float firstPersontCameraTargetDist = 10.0f;
+float firstPersonCameraTargetDist = 10.0f;
 
 /**
  * @brief Creates a dinamically allocated GameWorld struct instance.
@@ -51,6 +55,8 @@ GameWorld* createGameWorld( void ) {
     float playerThickness = 2.0f;
 
     gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+    //gw->cameraType = CAMERA_TYPE_FIRST_PERSON_MOUSE;
+    gw->previousMousePos = (Vector2){0};
 
     gw->player = (Player){
         .pos = {
@@ -82,7 +88,7 @@ GameWorld* createGameWorld( void ) {
         .mesh = { 0 },
         .model = { 0 },
         .rotationAxis = { 0.0f, 1.0f, 0.0f },
-        .rotationAngle = 0.0f,
+        .rotationHorizontalAngle = 0.0f,
         .rotationVel = 0.0f,
         .rotationSpeed = 150.0f,
         .scale = { 1.0f, 1.0f, 1.0f },
@@ -280,6 +286,7 @@ void destroyGameWorld( GameWorld *gw ) {
  */
 void inputAndUpdateGameWorld( GameWorld *gw ) {
 
+    float delta = GetFrameTime();
     Player *player = &gw->player;
     Block *leftWall = &gw->leftWall;
     Block *rightWall = &gw->rightWall;
@@ -302,20 +309,30 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     // keyboard movement
     if ( IsKeyDown( KEY_W ) ) {
-        player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed;
-        player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed;
+        player->vel.x = cos( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
+        player->vel.z = -sin( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
     } else if ( IsKeyDown( KEY_S ) ) {
-        player->vel.x = -cos( DEG2RAD * player->rotationAngle ) * player->speed;
-        player->vel.z = sin( DEG2RAD * player->rotationAngle ) * player->speed;
+        player->vel.x = -cos( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
+        player->vel.z = sin( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
     } else {
         player->vel.x = 0.0f;
         player->vel.z = 0.0f;
     }
 
     if ( IsKeyDown( KEY_A ) ) {
-        player->rotationVel = player->rotationSpeed;
+        if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+            player->vel.x = cos( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * player->speed;
+            player->vel.z = -sin( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * player->speed;
+        } else {
+            player->rotationVel = player->rotationSpeed;
+        }
     } else if ( IsKeyDown( KEY_D ) ) {
-        player->rotationVel = -player->rotationSpeed;
+        if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+            player->vel.x = cos( DEG2RAD * ( player->rotationHorizontalAngle - 90 ) ) * player->speed;
+            player->vel.z = -sin( DEG2RAD * ( player->rotationHorizontalAngle - 90 ) ) * player->speed;
+        } else {
+            player->rotationVel = -player->rotationSpeed;
+        }
     } else {
         player->rotationVel = 0.0f;
     }
@@ -337,13 +354,32 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed * gpy;*/
 
         // standard
-        float gpx = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
-        float gpy = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+        float gpxLeft = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
+        float gpyLeft = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
 
-        player->vel.x = player->speed * gpx;
-        player->vel.z = player->speed * gpy;
-        if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
-            player->rotationAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
+        float gpxRight = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
+        float gpyRight = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_Y );
+
+        if ( gw->cameraType == CAMERA_TYPE_THIRD_PERSON_FIXED ) {
+            player->vel.x = player->speed * gpxLeft;
+            player->vel.z = player->speed * gpyLeft;
+            if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
+                player->rotationHorizontalAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
+            }
+        } else {
+            player->rotationHorizontalAngle += gpxRight * delta * -player->rotationSpeed;
+            player->rotationVerticalAngle += gpyRight * delta * -player->rotationSpeed;
+            if ( player->rotationVerticalAngle < 0.0f ) {
+                player->rotationVerticalAngle = 0.0f;
+            } else if ( player->rotationVerticalAngle > 180.0f ) {
+                player->rotationVerticalAngle = 180.0f;
+            }
+            float xMultiplier = ( ( -cos( DEG2RAD * player->rotationHorizontalAngle ) * gpyLeft ) +
+                                  ( -cos( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * gpxLeft ) ) / 2.0f;
+            float zMultiplier = ( ( sin( DEG2RAD * player->rotationHorizontalAngle ) * gpyLeft ) +
+                                  ( sin( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * gpxLeft ) ) / 2.0f;
+            player->vel.x = player->speed * xMultiplier;
+            player->vel.z = player->speed * zMultiplier;
         }
 
         if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
@@ -451,7 +487,7 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         yCam = 25.0f;
         zCam = 30.0f;
         player->pos = (Vector3){ 0.0, 1.0, 0.0 };
-        player->rotationAngle = 0.0f;
+        player->rotationHorizontalAngle = 0.0f;
         updatePlayerCollisionProbes( player );
         gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
         for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
@@ -461,7 +497,7 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     if ( IsKeyPressed( KEY_F ) ) {
         int ct = gw->cameraType + 1;
-        gw->cameraType = ct % 3;
+        gw->cameraType = ct % CAMERA_TYPE_QUANTITY;
     }
 
 }
@@ -496,10 +532,21 @@ void drawGameWorld( GameWorld *gw ) {
 
     EndMode3D();
 
+    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON || 
+         gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+        int xCenter = GetScreenWidth() / 2;
+        int yCenter = GetScreenHeight() / 2;
+        int reticleSize = 30;
+        DrawLine( xCenter - reticleSize, yCenter, xCenter + reticleSize, yCenter, BLACK );
+        DrawLine( xCenter, yCenter - reticleSize, xCenter, yCenter + reticleSize, BLACK );
+    }
+
     if ( showInfo ) {
         DrawFPS( 10, 10 );
         showCameraInfo( &gw->camera, 10, 30 );
     }
+
+    //DrawText( TextFormat( "ângulo v: %.2f", gw->player.rotationVerticalAngle ), 20, 20, 20, BLACK );
 
     EndDrawing();
 
@@ -507,8 +554,23 @@ void drawGameWorld( GameWorld *gw ) {
 
 void updateCameraTarget( GameWorld *gw, Player *player ) {
 
-    float cosa = cos( DEG2RAD * player->rotationAngle );
-    float sina = -sin( DEG2RAD * player->rotationAngle );
+    float delta = GetFrameTime();
+
+    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+        Vector2 mousePos = GetMousePosition();
+        player->rotationHorizontalAngle += ( gw->previousMousePos.x - mousePos.x ) * delta * 70;
+        player->rotationVerticalAngle += ( gw->previousMousePos.y - mousePos.y ) * delta * 30;
+        gw->previousMousePos = mousePos;
+        HideCursor();
+    } else {
+        ShowCursor();
+    }
+
+    float cosH = cos( DEG2RAD * player->rotationHorizontalAngle );
+    float sinH = -sin( DEG2RAD * player->rotationHorizontalAngle );
+
+    float cosV = cos( DEG2RAD * player->rotationVerticalAngle );
+    float sinV = -sin( DEG2RAD * player->rotationVerticalAngle );
 
     switch ( gw->cameraType ) {
         case CAMERA_TYPE_THIRD_PERSON_FIXED:
@@ -516,9 +578,10 @@ void updateCameraTarget( GameWorld *gw, Player *player ) {
             break;
         case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
         case CAMERA_TYPE_FIRST_PERSON:
-            gw->camera.target.x = player->pos.x + cosa * firstPersontCameraTargetDist;
-            gw->camera.target.y = player->pos.y + player->dim.y / 2;
-            gw->camera.target.z = player->pos.z + sina * firstPersontCameraTargetDist;
+        case CAMERA_TYPE_FIRST_PERSON_MOUSE:
+            gw->camera.target.x = player->pos.x + cosH * firstPersonCameraTargetDist;
+            gw->camera.target.y = player->pos.y + cosV * firstPersonCameraTargetDist;
+            gw->camera.target.z = player->pos.z + sinH * firstPersonCameraTargetDist;
             break;
     }
 
@@ -526,8 +589,8 @@ void updateCameraTarget( GameWorld *gw, Player *player ) {
 
 void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset ) {
 
-    float cosa = cos( DEG2RAD * player->rotationAngle );
-    float sina = -sin( DEG2RAD * player->rotationAngle );
+    float cosa = cos( DEG2RAD * player->rotationHorizontalAngle );
+    float sina = -sin( DEG2RAD * player->rotationHorizontalAngle );
 
     switch ( gw->cameraType ) {
         case CAMERA_TYPE_THIRD_PERSON_FIXED:
@@ -542,6 +605,7 @@ void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float y
             gw->camera.position.z += sina * ( -player->dim.z * 4 );
             break;
         case CAMERA_TYPE_FIRST_PERSON:
+        case CAMERA_TYPE_FIRST_PERSON_MOUSE:
             gw->camera.position = player->pos;
             gw->camera.position.x += cosa * ( player->dim.x / 2 );
             gw->camera.position.z += sina * ( player->dim.z / 2 );
