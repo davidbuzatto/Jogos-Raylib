@@ -30,6 +30,8 @@ typedef struct Player {
     Vector3 vel;
 
     float speed;
+    float walkingSpeed;
+    float runningSpeed;
     float jumpSpeed;
 
     Color color;
@@ -61,8 +63,9 @@ typedef struct Player {
 
 } Player;
 
+Player createPlayer();
 void drawPlayer( Player *player );
-void updatePlayer( Player *player );
+void updatePlayer( Player *player, float delta );
 void updatePlayerCollisionProbes( Player *player );
 void jumpPlayer( Player *player );
 PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, bool checkCollisionProbes );

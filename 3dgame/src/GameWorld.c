@@ -31,6 +31,7 @@
 
 const float GRAVITY = 50.0f;
 const int CAMERA_TYPE_QUANTITY = 4;
+const bool CREATE_OBSTACLES = true;
 
 bool showInfo = false;
 bool drawWalls = false;
@@ -46,88 +47,223 @@ float firstPersonCameraTargetDist = 10.0f;
  */
 GameWorld* createGameWorld( void ) {
 
-    GameWorld *gw = (GameWorld*) malloc( sizeof( GameWorld ) );
-    Color wallColor = Fade( DARKGREEN, 0.5f );
-    Color obstacleColor = Fade( LIME, 0.8f );
-
-    float cpThickness = 1.0f;
-    float cpDiff = 0.7f;
-    float playerThickness = 2.0f;
-
-    gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
-    //gw->cameraType = CAMERA_TYPE_FIRST_PERSON_MOUSE;
-    gw->previousMousePos = (Vector2){0};
-
-    gw->player = (Player){
-        .pos = {
-            .x = 0.0f,
-            .y = 1.0f,
-            .z = 0.0f
-        },
-        .lastPos = {
-            .x = 0.0f,
-            .y = 1.0f,
-            .z = 0.0f
-        },
-        .dim = {
-            .x = playerThickness, 
-            .y = playerThickness,
-            .z = playerThickness
-        },
-        .vel = {
-            .x = 0.0f,
-            .y = 0.0f,
-            .z = 0.0f
-        },
-        .speed = 20.0f,
-        .jumpSpeed = 20.0f,
-        .color = Fade( BLUE, 0.8f ),
-        .showWiresOnly = false,
-        .showCollisionProbes = false,
-
-        .mesh = { 0 },
-        .model = { 0 },
-        .rotationAxis = { 0.0f, 1.0f, 0.0f },
-        .rotationHorizontalAngle = 0.0f,
-        .rotationVel = 0.0f,
-        .rotationSpeed = 150.0f,
-        .scale = { 1.0f, 1.0f, 1.0f },
-
-        .cpLeft = { .visible = true },
-        .cpRight = { .visible = true  },
-        .cpBottom = { .visible = true },
-        .cpTop = { .visible = true },
-        .cpFar = { .visible = true },
-        .cpNear = { .visible = true },
-        .cpDimLR = { cpThickness, playerThickness - cpDiff, playerThickness - cpDiff },
-        .cpDimBT = { playerThickness - cpDiff, cpThickness, playerThickness - cpDiff },
-        .cpDimFN = { playerThickness - cpDiff, playerThickness - cpDiff, cpThickness },
-
-        .positionState = PLAYER_POSITION_STATE_ON_GROUND
-
-    };
-
-    gw->player.cpLeft.dim = gw->player.cpDimLR;
-    gw->player.cpRight.dim = gw->player.cpDimLR;
-    gw->player.cpBottom.dim = gw->player.cpDimBT;
-    gw->player.cpTop.dim = gw->player.cpDimBT;
-    gw->player.cpFar.dim = gw->player.cpDimFN;
-    gw->player.cpNear.dim = gw->player.cpDimFN;
-
-    gw->player.cpLeft.color = BLUE;
-    gw->player.cpRight.color = GREEN;
-    gw->player.cpBottom.color = RED;
-    gw->player.cpTop.color = GRAY;
-    gw->player.cpFar.color = YELLOW;
-    gw->player.cpNear.color = WHITE;
-
-    createPlayerModel( &gw->player );
-
     float blockSize = 2.0f;
     int lines = 10;
     int columns = 50;
 
-    gw->ground = (Block){
+    GameWorld *gw = (GameWorld*) malloc( sizeof( GameWorld ) );
+    Color wallColor = Fade( DARKGREEN, 0.5f );
+    Color obstacleColor = Fade( LIME, 0.8f );
+
+    gw->previousMousePos = (Vector2){0};
+
+    gw->player = createPlayer();
+    gw->enemy = createEnemy();
+    gw->ground = createGround( blockSize, lines, columns );
+
+    if ( CREATE_OBSTACLES ) {
+        createObstacles( gw, blockSize, obstacleColor );
+    } else {
+        gw->obstaclesQuantity = 0;
+    }
+
+    createWalls( gw, wallColor );
+
+    gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+    setupCamera( gw );
+    updateCameraTarget( gw, &gw->player );
+    updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
+
+    return gw;
+
+}
+
+/**
+ * @brief Destroys a GameWindow object and its dependecies.
+ */
+void destroyGameWorld( GameWorld *gw ) {
+    free( gw->obstacles );
+    destroyPlayerModel( &gw->player );
+    destroyEnemyModel( &gw->enemy );
+    destroyGroundModel( &gw->ground );
+    free( gw );
+}
+
+/**
+ * @brief Reads user input and updates the state of the game.
+ */
+void inputAndUpdateGameWorld( GameWorld *gw ) {
+
+    float delta = GetFrameTime();
+
+    Player *player = &gw->player;
+    Enemy *enemy = &gw->enemy;
+    Block *ground = &gw->ground;
+    Block *leftWall = &gw->leftWall;
+    Block *rightWall = &gw->rightWall;
+    Block *farWall = &gw->farWall;
+    Block *nearWall = &gw->nearWall;
+
+    processOptionsInput( player, gw );
+    processCameraInput( &xCam, &yCam, &zCam );
+    processPlayerInput( player, gw->cameraType, delta, false );
+
+    updatePlayer( player, delta );
+    updatePlayerCollisionProbes( player );
+
+    updateEnemy( enemy, delta );
+    updateEnemyCollisionProbes( enemy );
+
+    resolveCollisionPlayerObstacles( player, gw );
+    updatePlayerCollisionProbes( player );
+
+    resolveCollisionPlayerGround( player, ground );
+    resolveCollisionEnemyGround( enemy, ground );
+
+    resolveCollisionPlayerWalls( player, leftWall, rightWall, farWall, nearWall );
+    resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
+    resolveCollisionPlayerEnemy( player, enemy );
+
+    updateCameraTarget( gw, &gw->player );
+    updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
+
+}
+
+/**
+ * @brief Draws the state of the game.
+ */
+void drawGameWorld( GameWorld *gw ) {
+
+    BeginDrawing();
+    ClearBackground( WHITE );
+
+    BeginMode3D( gw->camera );
+
+    //DrawGrid( 120, 1.0f );
+
+    drawBlock( &gw->ground );
+    drawPlayer( &gw->player );
+    drawEnemy( &gw->enemy );
+
+    for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+        drawBlock( &gw->obstacles[i] );
+    }
+
+    if ( drawWalls ) {
+        drawBlock( &gw->leftWall );
+        drawBlock( &gw->rightWall );
+        drawBlock( &gw->farWall );
+        drawBlock( &gw->nearWall );
+    }
+
+    EndMode3D();
+
+    // reticle
+    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON || 
+         gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+        int xCenter = GetScreenWidth() / 2;
+        int yCenter = GetScreenHeight() / 2;
+        int reticleSize = 30;
+        DrawLine( xCenter - reticleSize, yCenter, xCenter + reticleSize, yCenter, BLACK );
+        DrawLine( xCenter, yCenter - reticleSize, xCenter, yCenter + reticleSize, BLACK );
+    }
+
+    // debug info
+    if ( showInfo ) {
+        DrawFPS( 10, 10 );
+        showCameraInfo( &gw->camera, 10, 30 );
+    }
+
+    EndDrawing();
+
+}
+
+void setupCamera( GameWorld *gw ) {
+    gw->camera = (Camera3D){ 0 };
+    gw->camera.position = (Vector3){ 0.0f, 25.0f, 0.0f };   // Camera position
+    gw->camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
+    gw->camera.fovy = 45.0f;                                // Camera field-of-view Y
+    gw->camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
+}
+
+void updateCameraTarget( GameWorld *gw, Player *player ) {
+
+    float delta = GetFrameTime();
+
+    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+        Vector2 mousePos = GetMousePosition();
+        player->rotationHorizontalAngle += ( gw->previousMousePos.x - mousePos.x ) * delta * 70;
+        player->rotationVerticalAngle += ( gw->previousMousePos.y - mousePos.y ) * delta * 30;
+        gw->previousMousePos = mousePos;
+        HideCursor();
+    } else {
+        ShowCursor();
+    }
+
+    float cosH = cos( DEG2RAD * player->rotationHorizontalAngle );
+    float sinH = -sin( DEG2RAD * player->rotationHorizontalAngle );
+
+    float cosV = cos( DEG2RAD * player->rotationVerticalAngle );
+    //float sinV = -sin( DEG2RAD * player->rotationVerticalAngle );
+
+    switch ( gw->cameraType ) {
+        case CAMERA_TYPE_THIRD_PERSON_FIXED:
+            gw->camera.target = player->pos;
+            break;
+        case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
+        case CAMERA_TYPE_FIRST_PERSON:
+        case CAMERA_TYPE_FIRST_PERSON_MOUSE:
+            gw->camera.target.x = player->pos.x + cosH * firstPersonCameraTargetDist;
+            gw->camera.target.y = player->pos.y + cosV * firstPersonCameraTargetDist;
+            gw->camera.target.z = player->pos.z + sinH * firstPersonCameraTargetDist;
+            break;
+    }
+
+}
+
+void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset ) {
+
+    float cosa = cos( DEG2RAD * player->rotationHorizontalAngle );
+    float sina = -sin( DEG2RAD * player->rotationHorizontalAngle );
+
+    switch ( gw->cameraType ) {
+        case CAMERA_TYPE_THIRD_PERSON_FIXED:
+            gw->camera.position.x = player->pos.x + xOffset;
+            gw->camera.position.y = yOffset;
+            gw->camera.position.z = player->pos.z + zOffset;
+            break;
+        case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
+            gw->camera.position = player->pos;
+            gw->camera.position.x += cosa * ( -player->dim.x * 4 );
+            gw->camera.position.y += player->dim.y;
+            gw->camera.position.z += sina * ( -player->dim.z * 4 );
+            break;
+        case CAMERA_TYPE_FIRST_PERSON:
+        case CAMERA_TYPE_FIRST_PERSON_MOUSE:
+            gw->camera.position = player->pos;
+            gw->camera.position.x += cosa * ( player->dim.x / 2 );
+            gw->camera.position.z += sina * ( player->dim.z / 2 );
+            break;
+    }
+
+}
+
+void showCameraInfo( Camera3D *camera, int x, int y ) {
+
+    const char *pos = TextFormat( 
+        "pos: x=%.2f, y=%.2f, z=%.2f",
+        camera->position.x,
+        camera->position.y,
+        camera->position.z
+    );
+
+    DrawText( pos, x, y, 20, BLACK );
+
+}
+
+Block createGround( float blockSize, int lines, int columns ) {
+
+    Block ground = {
         .pos = {
             .x = -1.0f,
             .y = -1.0f,
@@ -144,11 +280,38 @@ GameWorld* createGameWorld( void ) {
         .renderTouchColor = false
     };
 
-    createGroundModel( &gw->ground );
+    createGroundModel( &ground );
 
-    gw->obstablesQuantity = 28;
-    gw->obstacles = (Block*) malloc( sizeof( Block ) * gw->obstablesQuantity );
+    return ground;
+
+}
+
+void createGroundModel( Block *ground ) {
+
+    ground->renderModel = true;
+    ground->mesh = GenMeshCube( ground->dim.x, ground->dim.y, ground->dim.z );
+    ground->model = LoadModelFromMesh( ground->mesh );
+
+    Image img = GenImageChecked( ground->dim.x, ground->dim.z, 2, 2, ORANGE, (Color){ 192, 96, 0, 255 } );
+    Texture2D texture = LoadTextureFromImage( img );
+    UnloadImage( img );
+
+    ground->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+
+}
+
+void destroyGroundModel( Block *ground ) {
+    UnloadTexture( ground->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
+    UnloadModel( ground->model );
+}
+
+void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
+
+    gw->obstaclesQuantity = 44;
+    gw->obstacles = (Block*) malloc( sizeof( Block ) * gw->obstaclesQuantity );
+
     Vector3 positions[] = {
+        
         { 4, 1, 0 },
         { 6, 3, 0 },
         { 8, 5, 0 },
@@ -157,6 +320,15 @@ GameWorld* createGameWorld( void ) {
         { 14, 5, 0 },
         { 16, 3, 0 },
         { 18, 1, 0 },
+        { 4, 1, -2 },
+        { 6, 3, -2 },
+        { 8, 5, -2 },
+        { 10, 5, -2 },
+        { 12, 5, -2 },
+        { 14, 5, -2 },
+        { 16, 3, -2 },
+        { 18, 1, -2 },
+
         { -10, 1, 6 },
         { -10, 3, 4 },
         { -10, 5, 2 },
@@ -165,6 +337,15 @@ GameWorld* createGameWorld( void ) {
         { -10, 5, -4 },
         { -10, 3, -6 },
         { -10, 1, -8 },
+        { -12, 1, 6 },
+        { -12, 3, 4 },
+        { -12, 5, 2 },
+        { -12, 5, 0 },
+        { -12, 5, -2 },
+        { -12, 5, -4 },
+        { -12, 3, -6 },
+        { -12, 1, -8 },
+
         { 26, 1, 2 },
         { 28, 1, 2 },
         { 28, 1, 4 },
@@ -178,7 +359,8 @@ GameWorld* createGameWorld( void ) {
         { 34, 7, -4 },
         { 34, 7, -2 },
     };
-    for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
+
+    for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
         gw->obstacles[i] = (Block){
             .pos = positions[i],
             .dim = { blockSize, blockSize, blockSize },
@@ -189,6 +371,10 @@ GameWorld* createGameWorld( void ) {
             .renderTouchColor = false
         };
     }
+
+}
+
+void createWalls( GameWorld *gw, Color wallColor ) {
 
     gw->leftWall = (Block){
         .pos = {
@@ -258,140 +444,174 @@ GameWorld* createGameWorld( void ) {
         .renderTouchColor = false
     };
 
-    gw->camera = (Camera3D){ 0 };
-    gw->camera.position = (Vector3){ 0.0f, 25.0f, 0.0f };   // Camera position
-    gw->camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
-    gw->camera.fovy = 45.0f;                                // Camera field-of-view Y
-    gw->camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
+}
 
-    updateCameraTarget( gw, &gw->player );
-    updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
+void processOptionsInput( Player *player, GameWorld *gw ) {
 
-    return gw;
+    if ( IsKeyPressed( KEY_ONE ) ) {
+        showInfo = !showInfo;
+    }
+
+    if ( IsKeyPressed( KEY_TWO ) ) {
+        drawWalls = !drawWalls;
+    }
+
+    if ( IsKeyPressed( KEY_THREE ) ) {
+        player->showWiresOnly = !player->showWiresOnly;
+    }
+
+    if ( IsKeyPressed( KEY_FOUR ) ) {
+        player->showCollisionProbes = !player->showCollisionProbes;
+    }
+
+    if ( IsKeyPressed( KEY_FIVE ) ) {
+        for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+            gw->obstacles[i].renderTouchColor = !gw->obstacles[i].renderTouchColor;
+        }
+    }
+
+    if ( IsKeyPressed( KEY_R ) ) {
+        xCam = 0;
+        yCam = 25.0f;
+        zCam = 30.0f;
+        player->pos = (Vector3){ 0.0, 1.0, 0.0 };
+        player->rotationHorizontalAngle = 0.0f;
+        updatePlayerCollisionProbes( player );
+        gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+        for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+            gw->obstacles[i].touchColor = gw->obstacles[i].color;
+        }
+    }
+
+    if ( IsKeyPressed( KEY_F ) ) {
+        int ct = gw->cameraType + 1;
+        gw->cameraType = ct % CAMERA_TYPE_QUANTITY;
+    }
 
 }
 
-/**
- * @brief Destroys a GameWindow object and its dependecies.
- */
-void destroyGameWorld( GameWorld *gw ) {
-    free( gw->obstacles );
-    destroyPlayerModel( &gw->player );
-    destroyGroundModel( &gw->ground );
-    free( gw );
-}
-
-/**
- * @brief Reads user input and updates the state of the game.
- */
-void inputAndUpdateGameWorld( GameWorld *gw ) {
-
-    float delta = GetFrameTime();
-    Player *player = &gw->player;
-    Block *leftWall = &gw->leftWall;
-    Block *rightWall = &gw->rightWall;
-    Block *farWall = &gw->farWall;
-    Block *nearWall = &gw->nearWall;
+void processCameraInput( float *xCam, float *yCam, float *zCam ) {
 
     if ( IsKeyDown( KEY_UP ) ) {
-        yCam += 1;
+        *yCam += 1;
     } else if ( IsKeyDown( KEY_DOWN ) ) {
-        yCam -= 1;
+        *yCam -= 1;
     } else if ( IsKeyDown( KEY_LEFT ) ) {
-        xCam -= 1;
+        *xCam -= 1;
     } else if ( IsKeyDown( KEY_RIGHT ) ) {
-        xCam += 1;
+        *xCam += 1;
     } else if ( IsKeyDown( KEY_KP_SUBTRACT ) ) {
-        zCam -= 1;
+        *zCam -= 1;
     } else if ( IsKeyDown( KEY_KP_ADD ) ) {
-        zCam += 1;
+        *zCam += 1;
     }
 
-    // keyboard movement
-    if ( IsKeyDown( KEY_W ) ) {
-        player->vel.x = cos( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
-        player->vel.z = -sin( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
-    } else if ( IsKeyDown( KEY_S ) ) {
-        player->vel.x = -cos( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
-        player->vel.z = sin( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
-    } else {
-        player->vel.x = 0.0f;
-        player->vel.z = 0.0f;
-    }
+}
 
-    if ( IsKeyDown( KEY_A ) ) {
-        if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
-            player->vel.x = cos( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * player->speed;
-            player->vel.z = -sin( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * player->speed;
+void processPlayerInput( Player *player, CameraType cameraType, float delta, bool keyboard ) {
+
+    if ( keyboard ) {
+
+        // keyboard movement
+        if ( IsKeyDown( KEY_LEFT_CONTROL ) ) {
+            player->speed = player->runningSpeed;
         } else {
-            player->rotationVel = player->rotationSpeed;
+            player->speed = player->walkingSpeed;
         }
-    } else if ( IsKeyDown( KEY_D ) ) {
-        if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
-            player->vel.x = cos( DEG2RAD * ( player->rotationHorizontalAngle - 90 ) ) * player->speed;
-            player->vel.z = -sin( DEG2RAD * ( player->rotationHorizontalAngle - 90 ) ) * player->speed;
+
+        if ( IsKeyDown( KEY_W ) ) {
+            player->vel.x = cos( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
+            player->vel.z = -sin( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
+        } else if ( IsKeyDown( KEY_S ) ) {
+            player->vel.x = -cos( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
+            player->vel.z = sin( DEG2RAD * player->rotationHorizontalAngle ) * player->speed;
         } else {
-            player->rotationVel = -player->rotationSpeed;
+            player->vel.x = 0.0f;
+            player->vel.z = 0.0f;
         }
-    } else {
-        player->rotationVel = 0.0f;
-    }
 
-    if ( IsKeyPressed( KEY_SPACE ) ) {
-        jumpPlayer( player );
-    }
-
-    // joystick
-    const int gamepadId = 0;
-    if ( IsGamepadAvailable( gamepadId ) ) {
-
-        // tank
-        /*float gpx = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
-        float gpy = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
-
-        player->rotationVel = player->rotationSpeed * gpx;
-        player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed * gpy;
-        player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed * gpy;*/
-
-        // standard
-        float gpxLeft = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
-        float gpyLeft = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
-
-        float gpxRight = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
-        float gpyRight = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_Y );
-
-        if ( gw->cameraType == CAMERA_TYPE_THIRD_PERSON_FIXED ) {
-            player->vel.x = player->speed * gpxLeft;
-            player->vel.z = player->speed * gpyLeft;
-            if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
-                player->rotationHorizontalAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
+        if ( IsKeyDown( KEY_A ) ) {
+            if ( cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+                player->vel.x = cos( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * player->speed;
+                player->vel.z = -sin( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * player->speed;
+            } else {
+                player->rotationVel = player->rotationSpeed;
+            }
+        } else if ( IsKeyDown( KEY_D ) ) {
+            if ( cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+                player->vel.x = cos( DEG2RAD * ( player->rotationHorizontalAngle - 90 ) ) * player->speed;
+                player->vel.z = -sin( DEG2RAD * ( player->rotationHorizontalAngle - 90 ) ) * player->speed;
+            } else {
+                player->rotationVel = -player->rotationSpeed;
             }
         } else {
-            player->rotationHorizontalAngle += gpxRight * delta * -player->rotationSpeed;
-            player->rotationVerticalAngle += gpyRight * delta * -player->rotationSpeed;
-            if ( player->rotationVerticalAngle < 0.0f ) {
-                player->rotationVerticalAngle = 0.0f;
-            } else if ( player->rotationVerticalAngle > 180.0f ) {
-                player->rotationVerticalAngle = 180.0f;
-            }
-            float xMultiplier = ( ( -cos( DEG2RAD * player->rotationHorizontalAngle ) * gpyLeft ) +
-                                  ( -cos( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * gpxLeft ) ) / 2.0f;
-            float zMultiplier = ( ( sin( DEG2RAD * player->rotationHorizontalAngle ) * gpyLeft ) +
-                                  ( sin( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * gpxLeft ) ) / 2.0f;
-            player->vel.x = player->speed * xMultiplier;
-            player->vel.z = player->speed * zMultiplier;
+            player->rotationVel = 0.0f;
         }
 
-        if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
+        if ( IsKeyPressed( KEY_SPACE ) ) {
             jumpPlayer( player );
         }
 
+    } else {
+
+        // joystick
+        const int gamepadId = 0;
+        if ( IsGamepadAvailable( gamepadId ) ) {
+
+            // tank
+            /*float gpx = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
+            float gpy = -GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+
+            player->rotationVel = player->rotationSpeed * gpx;
+            player->vel.x = cos( DEG2RAD * player->rotationAngle ) * player->speed * gpy;
+            player->vel.z = -sin( DEG2RAD * player->rotationAngle ) * player->speed * gpy;*/
+
+            // standard
+            float gpxLeft = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_X );
+            float gpyLeft = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_LEFT_Y );
+
+            float gpxRight = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_X );
+            float gpyRight = GetGamepadAxisMovement( gamepadId, GAMEPAD_AXIS_RIGHT_Y );
+
+            if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_LEFT_THUMB ) ) {
+                player->speed = player->runningSpeed;
+            }
+
+            if ( cameraType == CAMERA_TYPE_THIRD_PERSON_FIXED ) {
+                player->vel.x = player->speed * gpxLeft;
+                player->vel.z = player->speed * gpyLeft;
+                if ( player->vel.x != 0.0f || player->vel.z != 0.0f ) {
+                    player->rotationHorizontalAngle = RAD2DEG * atan2( -player->vel.z, player->vel.x );
+                }
+            } else {
+                player->rotationHorizontalAngle += gpxRight * delta * -player->rotationSpeed;
+                player->rotationVerticalAngle += gpyRight * delta * -player->rotationSpeed;
+                if ( player->rotationVerticalAngle < 0.0f ) {
+                    player->rotationVerticalAngle = 0.0f;
+                } else if ( player->rotationVerticalAngle > 180.0f ) {
+                    player->rotationVerticalAngle = 180.0f;
+                }
+                float xMultiplier = ( ( -cos( DEG2RAD * player->rotationHorizontalAngle ) * gpyLeft ) +
+                                    ( -cos( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * gpxLeft ) ) / 2.0f;
+                float zMultiplier = ( ( sin( DEG2RAD * player->rotationHorizontalAngle ) * gpyLeft ) +
+                                    ( sin( DEG2RAD * ( player->rotationHorizontalAngle + 90 ) ) * gpxLeft ) ) / 2.0f;
+                player->vel.x = player->speed * xMultiplier;
+                player->vel.z = player->speed * zMultiplier;
+            }
+
+            if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
+                jumpPlayer( player );
+            }
+
+        }
+
     }
 
-    updatePlayer( player );
-    updatePlayerCollisionProbes( player );
+}
 
-    for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
+void resolveCollisionPlayerObstacles( Player *player, GameWorld *gw ) {
+
+    for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
         Block *obs = &gw->obstacles[i];
         PlayerCollisionType coll = checkCollisionPlayerBlock( player, obs, true );
         switch ( coll ) {
@@ -427,15 +647,26 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
                 break;
         }
     }
+    
+}
 
-    updatePlayerCollisionProbes( player );
-
-    if ( checkCollisionPlayerBlock( player, &gw->ground, false ) == PLAYER_COLLISION_ALL ) {
-        player->pos.y = gw->ground.pos.y + gw->ground.dim.y / 2 + player->dim.y / 2;
+void resolveCollisionPlayerGround( Player *player, Block *ground ) {
+    if ( checkCollisionPlayerBlock( player, ground, false ) == PLAYER_COLLISION_ALL ) {
+        player->pos.y = ground->pos.y + ground->dim.y / 2 + player->dim.y / 2;
         player->vel.y = 0.0f;
+        updatePlayerCollisionProbes( player );
     }
+}
 
-    updatePlayerCollisionProbes( player );
+void resolveCollisionEnemyGround( Enemy *enemy, Block *ground ) {
+    if ( checkCollisionEnemyBlock( enemy, ground, false ) ==  ENEMY_COLLISION_ALL ) {
+        enemy->pos.y = ground->pos.y + ground->dim.y / 2 + enemy->dim.y / 2;
+        enemy->vel.y = 0.0f;
+        updateEnemyCollisionProbes( enemy );
+    }
+}
+
+void resolveCollisionPlayerWalls( Player *player, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall ) {
 
     if ( checkCollisionPlayerBlock( player, leftWall, false ) == PLAYER_COLLISION_ALL ) {
         player->pos.x = leftWall->pos.x + leftWall->dim.x / 2 + player->dim.y / 2;
@@ -457,191 +688,38 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         updatePlayerCollisionProbes( player );
     }
 
-    updateCameraTarget( gw, &gw->player );
-    updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
-
-    if ( IsKeyPressed( KEY_ONE ) ) {
-        showInfo = !showInfo;
-    }
-
-    if ( IsKeyPressed( KEY_TWO ) ) {
-        drawWalls = !drawWalls;
-    }
-
-    if ( IsKeyPressed( KEY_THREE ) ) {
-        player->showWiresOnly = !player->showWiresOnly;
-    }
-
-    if ( IsKeyPressed( KEY_FOUR ) ) {
-        player->showCollisionProbes = !player->showCollisionProbes;
-    }
-
-    if ( IsKeyPressed( KEY_FIVE ) ) {
-        for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
-            gw->obstacles[i].renderTouchColor = !gw->obstacles[i].renderTouchColor;
-        }
-    }
-
-    if ( IsKeyPressed( KEY_R ) ) {
-        xCam = 0;
-        yCam = 25.0f;
-        zCam = 30.0f;
-        player->pos = (Vector3){ 0.0, 1.0, 0.0 };
-        player->rotationHorizontalAngle = 0.0f;
-        updatePlayerCollisionProbes( player );
-        gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
-        for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
-            gw->obstacles[i].touchColor = gw->obstacles[i].color;
-        }
-    }
-
-    if ( IsKeyPressed( KEY_F ) ) {
-        int ct = gw->cameraType + 1;
-        gw->cameraType = ct % CAMERA_TYPE_QUANTITY;
-    }
-
 }
 
-/**
- * @brief Draws the state of the game.
- */
-void drawGameWorld( GameWorld *gw ) {
+void resolveCollisionEnemyWalls( Enemy *enemy, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall ) {
 
-    BeginDrawing();
-    ClearBackground( WHITE );
-
-    BeginMode3D( gw->camera );
-
-    //DrawGrid( 120, 1.0f );
-
-    drawBlock( &gw->ground );
-    drawPlayer( &gw->player );
-
-    for ( int i = 0; i < gw->obstablesQuantity; i++ ) {
-        drawBlock( &gw->obstacles[i] );
-    }
-
-    if ( drawWalls ) {
-        drawBlock( &gw->leftWall );
-        drawBlock( &gw->rightWall );
-        drawBlock( &gw->farWall );
-        drawBlock( &gw->nearWall );
+    if ( checkCollisionEnemyBlock( enemy, leftWall, false ) == ENEMY_COLLISION_ALL ) {
+        enemy->pos.x = leftWall->pos.x + leftWall->dim.x / 2 + enemy->dim.y / 2;
+        enemy->vel.x = -enemy->vel.x;
+        updateEnemyCollisionProbes( enemy );
     }
     
-    //DrawSphere( firstPersonCameraTarget, 1, BLACK );
-
-    EndMode3D();
-
-    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON || 
-         gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
-        int xCenter = GetScreenWidth() / 2;
-        int yCenter = GetScreenHeight() / 2;
-        int reticleSize = 30;
-        DrawLine( xCenter - reticleSize, yCenter, xCenter + reticleSize, yCenter, BLACK );
-        DrawLine( xCenter, yCenter - reticleSize, xCenter, yCenter + reticleSize, BLACK );
+    if ( checkCollisionEnemyBlock( enemy, rightWall, false ) == ENEMY_COLLISION_ALL ) {
+        enemy->pos.x = rightWall->pos.x - rightWall->dim.x / 2 - enemy->dim.y / 2;
+        enemy->vel.x = -enemy->vel.x;
+        updateEnemyCollisionProbes( enemy );
     }
-
-    if ( showInfo ) {
-        DrawFPS( 10, 10 );
-        showCameraInfo( &gw->camera, 10, 30 );
+    
+    if ( checkCollisionEnemyBlock( enemy, farWall, false ) == ENEMY_COLLISION_ALL ) {
+        enemy->pos.z = farWall->pos.z + farWall->dim.z / 2 + enemy->dim.z / 2;
+        enemy->vel.z = -enemy->vel.z;
+        updateEnemyCollisionProbes( enemy );
     }
-
-    //DrawText( TextFormat( "ângulo v: %.2f", gw->player.rotationVerticalAngle ), 20, 20, 20, BLACK );
-
-    EndDrawing();
-
-}
-
-void updateCameraTarget( GameWorld *gw, Player *player ) {
-
-    float delta = GetFrameTime();
-
-    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
-        Vector2 mousePos = GetMousePosition();
-        player->rotationHorizontalAngle += ( gw->previousMousePos.x - mousePos.x ) * delta * 70;
-        player->rotationVerticalAngle += ( gw->previousMousePos.y - mousePos.y ) * delta * 30;
-        gw->previousMousePos = mousePos;
-        HideCursor();
-    } else {
-        ShowCursor();
-    }
-
-    float cosH = cos( DEG2RAD * player->rotationHorizontalAngle );
-    float sinH = -sin( DEG2RAD * player->rotationHorizontalAngle );
-
-    float cosV = cos( DEG2RAD * player->rotationVerticalAngle );
-    float sinV = -sin( DEG2RAD * player->rotationVerticalAngle );
-
-    switch ( gw->cameraType ) {
-        case CAMERA_TYPE_THIRD_PERSON_FIXED:
-            gw->camera.target = player->pos;
-            break;
-        case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
-        case CAMERA_TYPE_FIRST_PERSON:
-        case CAMERA_TYPE_FIRST_PERSON_MOUSE:
-            gw->camera.target.x = player->pos.x + cosH * firstPersonCameraTargetDist;
-            gw->camera.target.y = player->pos.y + cosV * firstPersonCameraTargetDist;
-            gw->camera.target.z = player->pos.z + sinH * firstPersonCameraTargetDist;
-            break;
+    
+    if ( checkCollisionEnemyBlock( enemy, nearWall, false ) == ENEMY_COLLISION_ALL ) {
+        enemy->pos.z = nearWall->pos.z - nearWall->dim.z / 2 - enemy->dim.z / 2;
+        enemy->vel.z = -enemy->vel.z;
+        updateEnemyCollisionProbes( enemy );
     }
 
 }
 
-void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset ) {
+void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy ) {
 
-    float cosa = cos( DEG2RAD * player->rotationHorizontalAngle );
-    float sina = -sin( DEG2RAD * player->rotationHorizontalAngle );
+    
 
-    switch ( gw->cameraType ) {
-        case CAMERA_TYPE_THIRD_PERSON_FIXED:
-            gw->camera.position.x = player->pos.x + xOffset;
-            gw->camera.position.y = yOffset;
-            gw->camera.position.z = player->pos.z + zOffset;
-            break;
-        case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
-            gw->camera.position = player->pos;
-            gw->camera.position.x += cosa * ( -player->dim.x * 4 );
-            gw->camera.position.y += player->dim.y;
-            gw->camera.position.z += sina * ( -player->dim.z * 4 );
-            break;
-        case CAMERA_TYPE_FIRST_PERSON:
-        case CAMERA_TYPE_FIRST_PERSON_MOUSE:
-            gw->camera.position = player->pos;
-            gw->camera.position.x += cosa * ( player->dim.x / 2 );
-            gw->camera.position.z += sina * ( player->dim.z / 2 );
-            break;
-    }
-
-}
-
-void showCameraInfo( Camera3D *camera, int x, int y ) {
-
-    const char *pos = TextFormat( 
-        "pos: x=%.2f, y=%.2f, z=%.2f",
-        camera->position.x,
-        camera->position.y,
-        camera->position.z
-    );
-
-    DrawText( pos, x, y, 20, BLACK );
-
-}
-
-void createGroundModel( Block *ground ) {
-
-    ground->renderModel = true;
-    ground->mesh = GenMeshCube( ground->dim.x, ground->dim.y, ground->dim.z );
-    ground->model = LoadModelFromMesh( ground->mesh );
-
-    Image img = GenImageChecked( ground->dim.x, ground->dim.z, 2, 2, ORANGE, (Color){ 192, 96, 0, 255 } );
-    Texture2D texture = LoadTextureFromImage( img );
-    UnloadImage( img );
-
-    ground->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
-
-}
-
-void destroyGroundModel( Block *ground ) {
-    UnloadTexture( ground->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
-    UnloadModel( ground->model );
 }

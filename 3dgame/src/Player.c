@@ -6,6 +6,84 @@
 #include "Player.h"
 #include "raylib.h"
 
+Player createPlayer() {
+
+    float cpThickness = 1.0f;
+    float cpDiff = 0.7f;
+    float playerThickness = 2.0f;
+
+    Player player = {
+        .pos = {
+            .x = 0.0f,
+            .y = 1.0f,
+            .z = 0.0f
+        },
+        .lastPos = {
+            .x = 0.0f,
+            .y = 1.0f,
+            .z = 0.0f
+        },
+        .dim = {
+            .x = playerThickness, 
+            .y = playerThickness,
+            .z = playerThickness
+        },
+        .vel = {
+            .x = 0.0f,
+            .y = 0.0f,
+            .z = 0.0f
+        },
+        .speed = 20.0f,
+        .walkingSpeed = 20.0f,
+        .runningSpeed = 40.0f,
+        .jumpSpeed = 20.0f,
+        .color = Fade( BLUE, 0.8f ),
+        .showWiresOnly = false,
+        .showCollisionProbes = false,
+
+        .mesh = { 0 },
+        .model = { 0 },
+        .rotationAxis = { 0.0f, 1.0f, 0.0f },
+        .rotationHorizontalAngle = 0.0f,
+        .rotationVerticalAngle = 90.0f,
+        .rotationVel = 0.0f,
+        .rotationSpeed = 150.0f,
+        .scale = { 1.0f, 1.0f, 1.0f },
+
+        .cpLeft = { .visible = true },
+        .cpRight = { .visible = true  },
+        .cpBottom = { .visible = true },
+        .cpTop = { .visible = true },
+        .cpFar = { .visible = true },
+        .cpNear = { .visible = true },
+        .cpDimLR = { cpThickness, playerThickness - cpDiff, playerThickness - cpDiff },
+        .cpDimBT = { playerThickness - cpDiff, cpThickness, playerThickness - cpDiff },
+        .cpDimFN = { playerThickness - cpDiff, playerThickness - cpDiff, cpThickness },
+
+        .positionState = PLAYER_POSITION_STATE_ON_GROUND
+
+    };
+
+    player.cpLeft.dim = player.cpDimLR;
+    player.cpRight.dim = player.cpDimLR;
+    player.cpBottom.dim = player.cpDimBT;
+    player.cpTop.dim = player.cpDimBT;
+    player.cpFar.dim = player.cpDimFN;
+    player.cpNear.dim = player.cpDimFN;
+
+    player.cpLeft.color = BLUE;
+    player.cpRight.color = GREEN;
+    player.cpBottom.color = RED;
+    player.cpTop.color = GRAY;
+    player.cpFar.color = YELLOW;
+    player.cpNear.color = WHITE;
+
+    createPlayerModel( &player );
+
+    return player;
+
+}
+
 void drawPlayer( Player *player ) {
     
     if ( player->showCollisionProbes ) {
@@ -25,9 +103,13 @@ void drawPlayer( Player *player ) {
 
 }
 
-void updatePlayer( Player *player ) {
+void updatePlayer( Player *player, float delta ) {
 
-    float delta = GetFrameTime();
+    // not moving in x and z axis
+    if ( player->pos.x == player->lastPos.x &&
+         player->pos.z == player->lastPos.z ) {
+        player->speed = player->walkingSpeed;
+    }
 
     player->lastPos = player->pos;
 

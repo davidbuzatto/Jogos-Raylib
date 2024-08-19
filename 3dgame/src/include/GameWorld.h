@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Player.h"
+#include "Enemy.h"
 #include "Block.h"
 #include "raylib.h"
 
@@ -28,11 +29,12 @@ typedef struct GameWorld {
     Vector2 previousMousePos;
     
     Player player;
+    Enemy enemy;
     
     Block ground;
 
     Block *obstacles;
-    int obstablesQuantity;
+    int obstaclesQuantity;
 
     Block leftWall;
     Block rightWall;
@@ -61,8 +63,25 @@ void inputAndUpdateGameWorld( GameWorld *gw );
  */
 void drawGameWorld( GameWorld *gw );
 
+void setupCamera( GameWorld *gw );
 void updateCameraTarget( GameWorld *gw, Player *player );
 void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset );
 void showCameraInfo( Camera3D *camera, int x, int y );
+
+Block createGround( float blockSize, int lines, int columns );
 void createGroundModel( Block *ground );
 void destroyGroundModel( Block *ground );
+
+void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor );
+void createWalls( GameWorld *gw, Color wallColor );
+
+void processOptionsInput( Player *player, GameWorld *gw );
+void processCameraInput( float *xCam, float *yCam, float *zCam );
+void processPlayerInput( Player *player, CameraType cameraType, float delta, bool keyboard );
+
+void resolveCollisionPlayerObstacles( Player *player, GameWorld *gw );
+void resolveCollisionPlayerGround( Player *player, Block *ground );
+void resolveCollisionEnemyGround( Enemy *enemy, Block *ground );
+void resolveCollisionPlayerWalls( Player *player, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall );
+void resolveCollisionEnemyWalls( Enemy *enemy, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall );
+void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy );
