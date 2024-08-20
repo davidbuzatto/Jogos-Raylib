@@ -8,6 +8,7 @@ typedef struct Block {
     Vector3 pos;
     Vector3 dim;
     Color color;
+    Color tintColor;
     Color touchColor;
     bool visible;
 

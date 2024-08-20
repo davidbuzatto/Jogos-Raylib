@@ -41,7 +41,8 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CFLAGS := -O1 -Wall -Wextra -Wno-unused-parameter -pedantic-errors -std=c99 -Wno-missing-braces
 
 # Linker flags
-LDFLAGS := -L lib/ -lraylib -lopengl32 -lgdi32 -lwinmm
+LDFLAGS := -L lib/ -lraylib -lopengl32 -lgdi32 -lwinmm -lm
+#LDFLAGS_LINUX := -L lib/ -lraylib -lopengl32 -lgdi32 -lm -lrt -ldl -lX11 -lpthread -lxcb -lXau -lXdmcp
 
 # The -MMD and -MP flags together generate Makefiles for us!
 # These files will have .d instead of .o as the output.

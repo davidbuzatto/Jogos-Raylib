@@ -274,7 +274,8 @@ Block createGround( float blockSize, int lines, int columns ) {
             .y = blockSize,
             .z = lines * blockSize
         },
-        .color = BLACK,
+        .color = ORANGE,
+        .tintColor = WHITE,
         .visible = true,
         .renderModel = false,
         .renderTouchColor = false
@@ -365,6 +366,7 @@ void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
             .pos = positions[i],
             .dim = { blockSize, blockSize, blockSize },
             .color = obstacleColor,
+            .tintColor = obstacleColor,
             .touchColor = obstacleColor,
             .visible = true,
             .renderModel = false,
@@ -372,6 +374,35 @@ void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
         };
     }
 
+    createObstaclesModel( gw->obstacles, gw->obstaclesQuantity );
+
+}
+
+void createObstaclesModel( Block *obstacles, int obstaclesQuantity ) {
+
+    Block *baseObstacle = &obstacles[0];
+
+    Image img = GenImageChecked( 2, 2, 1, 1, WHITE, LIGHTGRAY );
+    Texture2D texture = LoadTextureFromImage( img );
+    UnloadImage( img );
+
+    baseObstacle->renderModel = true;
+    baseObstacle->mesh = GenMeshCube( baseObstacle->dim.x, baseObstacle->dim.y, baseObstacle->dim.z );
+    baseObstacle->model = LoadModelFromMesh( baseObstacle->mesh );
+    baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+
+    for ( int i = 1; i < obstaclesQuantity; i++ ) {
+        obstacles[i].renderModel = true;
+        obstacles[i].mesh = baseObstacle->mesh;
+        obstacles[i].model = baseObstacle->model;
+    }
+
+}
+
+void destroyObstaclesModel( Block *obstacles, int obstaclesQuantity ) {
+    Block *baseObstacle = &obstacles[0];
+    UnloadTexture( baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
+    UnloadModel( baseObstacle->model );
 }
 
 void createWalls( GameWorld *gw, Color wallColor ) {

@@ -73,6 +73,9 @@ void createGroundModel( Block *ground );
 void destroyGroundModel( Block *ground );
 
 void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor );
+void createObstaclesModel( Block *obstacles, int obstaclesQuantity );
+void destroyObstaclesModel( Block *obstacles, int obstaclesQuantity );
+
 void createWalls( GameWorld *gw, Color wallColor );
 
 void processOptionsInput( Player *player, GameWorld *gw );

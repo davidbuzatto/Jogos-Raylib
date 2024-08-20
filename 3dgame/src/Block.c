@@ -6,7 +6,11 @@ void drawBlock( Block *block ) {
     if ( block->visible ) {
 
         if ( block->renderModel ) {
-            DrawModel( block->model, block->pos, 1.0f, WHITE );
+            if ( block->renderTouchColor ) {
+                DrawModel( block->model, block->pos, 1.0f, block->touchColor );
+            } else {
+                DrawModel( block->model, block->pos, 1.0f, block->tintColor );
+            }
             DrawCubeWiresV( block->pos, block->dim, BLACK );
         } else {
             if ( block->renderTouchColor ) {
