@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "Block.h"
+#include "Bullet.h"
 #include "raylib.h"
 
 typedef enum PlayerCollisionType {
@@ -22,6 +23,11 @@ typedef enum PlayerPositionState {
     PLAYER_POSITION_STATE_FALLING
 } PlayerPositionState;
 
+typedef enum PlayerWeaponState {
+    PLAYER_WEAPON_STATE_IDLE,
+    PLAYER_WEAPON_STATE_READY
+} PlayerWeaponState;
+
 typedef struct Player {
 
     Vector3 pos;
@@ -40,12 +46,21 @@ typedef struct Player {
 
     Mesh mesh;
     Model model;
+
     Vector3 rotationAxis;
     float rotationHorizontalAngle;
     float rotationVerticalAngle;
     float rotationVel;
     float rotationSpeed;
     Vector3 scale;
+
+    Bullet *bullets;
+    int bulletQuantity;
+    int maxBullets;
+    PlayerWeaponState weaponState;
+
+    float timeToNextShot;
+    float timeToNextShotCounter;
 
     // cp = collision probe
     Block cpLeft;
@@ -72,3 +87,5 @@ PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, boo
 BoundingBox getPlayerBoundingBox( Player *player );
 void createPlayerModel( Player *player );
 void destroyPlayerModel( Player *player );
+
+void playerShotBullet( Player *player );

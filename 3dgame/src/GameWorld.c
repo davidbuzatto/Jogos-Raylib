@@ -40,6 +40,10 @@ float xCam = 0.0f;
 float yCam = 25.0f;
 float zCam = 30.0f;
 
+/*float xCam = 0.0f;
+float yCam = 9.0f;
+float zCam = 7.4f;*/
+
 float firstPersonCameraTargetDist = 10.0f;
 
 /**
@@ -69,7 +73,8 @@ GameWorld* createGameWorld( void ) {
 
     createWalls( gw, wallColor );
 
-    gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+    //gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+    gw->cameraType = CAMERA_TYPE_FIRST_PERSON;
     setupCamera( gw );
     updateCameraTarget( gw, &gw->player );
     updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
@@ -158,15 +163,7 @@ void drawGameWorld( GameWorld *gw ) {
 
     EndMode3D();
 
-    // reticle
-    if ( gw->cameraType == CAMERA_TYPE_FIRST_PERSON || 
-         gw->cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
-        int xCenter = GetScreenWidth() / 2;
-        int yCenter = GetScreenHeight() / 2;
-        int reticleSize = 30;
-        DrawLine( xCenter - reticleSize, yCenter, xCenter + reticleSize, yCenter, BLACK );
-        DrawLine( xCenter, yCenter - reticleSize, xCenter, yCenter + reticleSize, BLACK );
-    }
+    drawReticle( gw->cameraType, gw->player.weaponState, 30 );
 
     // debug info
     if ( showInfo ) {
@@ -175,6 +172,19 @@ void drawGameWorld( GameWorld *gw ) {
     }
 
     EndDrawing();
+
+}
+
+void drawReticle( CameraType cameraType, PlayerWeaponState weaponState, int reticleSize ) {
+
+    if ( cameraType == CAMERA_TYPE_FIRST_PERSON || 
+         cameraType == CAMERA_TYPE_FIRST_PERSON_MOUSE ) {
+        int xCenter = GetScreenWidth() / 2;
+        int yCenter = GetScreenHeight() / 2;
+        Color reticleColor = weaponState == PLAYER_WEAPON_STATE_READY ? RED : BLACK;
+        DrawLine( xCenter - reticleSize, yCenter, xCenter + reticleSize, yCenter, reticleColor );
+        DrawLine( xCenter, yCenter - reticleSize, xCenter, yCenter + reticleSize, reticleColor );
+    }
 
 }
 
@@ -313,22 +323,22 @@ void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
 
     Vector3 positions[] = {
         
-        { 4, 1, 0 },
-        { 6, 3, 0 },
-        { 8, 5, 0 },
-        { 10, 5, 0 },
-        { 12, 5, 0 },
+        { 10, 1, 0 },
+        { 12, 3, 0 },
         { 14, 5, 0 },
-        { 16, 3, 0 },
-        { 18, 1, 0 },
-        { 4, 1, -2 },
-        { 6, 3, -2 },
-        { 8, 5, -2 },
-        { 10, 5, -2 },
-        { 12, 5, -2 },
+        { 16, 5, 0 },
+        { 18, 5, 0 },
+        { 20, 5, 0 },
+        { 22, 3, 0 },
+        { 24, 1, 0 },
+        { 10, 1, -2 },
+        { 12, 3, -2 },
         { 14, 5, -2 },
-        { 16, 3, -2 },
-        { 18, 1, -2 },
+        { 16, 5, -2 },
+        { 18, 5, -2 },
+        { 20, 5, -2 },
+        { 22, 3, -2 },
+        { 24, 1, -2 },
 
         { -10, 1, 6 },
         { -10, 3, 4 },
@@ -347,18 +357,18 @@ void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
         { -12, 3, -6 },
         { -12, 1, -8 },
 
-        { 26, 1, 2 },
-        { 28, 1, 2 },
-        { 28, 1, 4 },
-        { 28, 3, 0 },
-        { 30, 3, 0 },
-        { 30, 3, 2 },
-        { 30, 5, -2 },
-        { 32, 5, -2 },
-        { 32, 5, 0 },
-        { 32, 7, -4 },
-        { 34, 7, -4 },
-        { 34, 7, -2 },
+        { 32, 1, 2 },
+        { 34, 1, 2 },
+        { 34, 1, 4 },
+        { 34, 3, 0 },
+        { 36, 3, 0 },
+        { 36, 3, 2 },
+        { 36, 5, -2 },
+        { 38, 5, -2 },
+        { 38, 5, 0 },
+        { 38, 7, -4 },
+        { 40, 7, -4 },
+        { 40, 7, -2 },
     };
 
     for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
@@ -632,6 +642,15 @@ void processPlayerInput( Player *player, CameraType cameraType, float delta, boo
 
             if ( IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) ) {
                 jumpPlayer( player );
+            }
+
+            if ( IsGamepadButtonDown( gamepadId, GAMEPAD_BUTTON_LEFT_TRIGGER_2 ) ) {
+                player->weaponState = PLAYER_WEAPON_STATE_READY;
+                if ( IsGamepadButtonDown( gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_2 ) ) {
+                    playerShotBullet( player );
+                }
+            } else {
+                player->weaponState = PLAYER_WEAPON_STATE_IDLE;
             }
 
         }

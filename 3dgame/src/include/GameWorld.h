@@ -62,6 +62,7 @@ void inputAndUpdateGameWorld( GameWorld *gw );
  * @brief Draws the state of the game.
  */
 void drawGameWorld( GameWorld *gw );
+void drawReticle( CameraType cameraType, PlayerWeaponState weaponState, int reticleSize );
 
 void setupCamera( GameWorld *gw );
 void updateCameraTarget( GameWorld *gw, Player *player );

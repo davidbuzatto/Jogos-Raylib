@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "GameWorld.h"
 #include "Block.h"
+#include "Bullet.h"
 #include "Player.h"
 #include "raylib.h"
 
@@ -11,6 +13,8 @@ Player createPlayer() {
     float cpThickness = 1.0f;
     float cpDiff = 0.7f;
     float playerThickness = 2.0f;
+
+    int maxBullets = 1000;
 
     Player player = {
         .pos = {
@@ -49,6 +53,13 @@ Player createPlayer() {
         .rotationVel = 0.0f,
         .rotationSpeed = 150.0f,
         .scale = { 1.0f, 1.0f, 1.0f },
+
+        .bullets = (Bullet*) malloc( sizeof( Bullet ) * maxBullets ),
+        .bulletQuantity = 0,
+        .maxBullets = maxBullets,
+        .weaponState = PLAYER_WEAPON_STATE_IDLE,
+        .timeToNextShot = 0.1f,
+        .timeToNextShotCounter = 0.0f,
 
         .cpLeft = { .visible = true },
         .cpRight = { .visible = true  },
@@ -101,6 +112,10 @@ void drawPlayer( Player *player ) {
 
     DrawModelWiresEx( player->model, player->pos, player->rotationAxis, player->rotationHorizontalAngle, player->scale, BLACK );
 
+    for ( int i = 0; i < player->bulletQuantity; i++ ) {
+        drawBullet( &player->bullets[i] );
+    }
+
 }
 
 void updatePlayer( Player *player, float delta ) {
@@ -127,6 +142,10 @@ void updatePlayer( Player *player, float delta ) {
         player->positionState = PLAYER_POSITION_STATE_JUMPING;
     } else {
         player->positionState = PLAYER_POSITION_STATE_ON_GROUND;
+    }
+
+    for ( int i = 0; i < player->bulletQuantity; i++ ) {
+        updateBullet( &player->bullets[i], delta );
     }
 
 }
@@ -243,4 +262,34 @@ void createPlayerModel( Player *player ) {
 void destroyPlayerModel( Player *player ) {
     UnloadTexture( player->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
     UnloadModel( player->model );
+}
+
+void playerShotBullet( Player *player ) {
+    
+    float delta = GetFrameTime();
+    player->timeToNextShotCounter += delta;
+
+    if ( player->timeToNextShotCounter >= player->timeToNextShot ) {
+
+        player->timeToNextShotCounter = 0.0f;
+
+        if ( player->bulletQuantity < player->maxBullets ) {
+
+            int q = player->bulletQuantity;
+
+            player->bullets[q] = createBullet();
+            Bullet *b = &player->bullets[q];
+
+            b->pos = player->pos;
+
+            b->vel.x = cos( DEG2RAD * player->rotationHorizontalAngle ) * b->speed;
+            b->vel.y = sin( DEG2RAD * ( player->rotationVerticalAngle + 90.0f )  ) * b->speed;
+            b->vel.z = -sin( DEG2RAD * player->rotationHorizontalAngle ) * b->speed;
+
+            player->bulletQuantity++;
+
+        }
+
+    }
+
 }
