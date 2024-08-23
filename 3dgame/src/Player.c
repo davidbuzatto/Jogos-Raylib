@@ -231,6 +231,35 @@ PlayerCollisionType checkCollisionPlayerBlock( Player *player, Block *block, boo
 
 }
 
+PlayerCollisionType checkCollisionPlayerEnemy( Player *player, Enemy *enemy, bool checkCollisionProbes ) {
+
+    BoundingBox playerBB = getPlayerBoundingBox( player );
+    BoundingBox enemyBB = getEnemyBoundingBox( enemy );
+
+    if ( checkCollisionProbes ) {
+
+        if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpLeft ), enemyBB ) ) {
+            return PLAYER_COLLISION_LEFT;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpRight ), enemyBB ) ) {
+            return PLAYER_COLLISION_RIGHT;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpBottom ), enemyBB ) ) {
+            return PLAYER_COLLISION_BOTTOM;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpTop ), enemyBB ) ) {
+            return PLAYER_COLLISION_TOP;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpFar ), enemyBB ) ) {
+            return PLAYER_COLLISION_FAR;
+        } else if ( CheckCollisionBoxes( getBlockBoundingBox( &player->cpNear ), enemyBB ) ) {
+            return PLAYER_COLLISION_NEAR;
+        }
+
+    } else if ( CheckCollisionBoxes( playerBB, enemyBB ) ) {
+        return PLAYER_COLLISION_ALL;
+    }
+
+    return PLAYER_COLLISION_NONE;
+
+}
+
 BoundingBox getPlayerBoundingBox( Player *player ) {
     return (BoundingBox) {
         .min = {

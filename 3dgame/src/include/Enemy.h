@@ -22,6 +22,12 @@ typedef enum EnemyPositionState {
     ENEMY_POSITION_STATE_FALLING
 } EnemyPositionState;
 
+typedef enum EnemyState {
+    ENEMY_STATE_ALIVE,
+    ENEMY_STATE_DYING,
+    ENEMY_STATE_DEAD
+} EnemyState;
+
 typedef struct Enemy {
 
     Vector3 pos;
@@ -57,10 +63,11 @@ typedef struct Enemy {
     Vector3 cpDimFN;
 
     EnemyPositionState positionState;
+    EnemyState state;
 
 } Enemy;
 
-Enemy createEnemy();
+Enemy createEnemy( Vector3 pos, Color color );
 void drawEnemy( Enemy *enemy );
 void updateEnemy( Enemy *enemy, float delta );
 void updateEnemyCollisionProbes( Enemy *enemy );

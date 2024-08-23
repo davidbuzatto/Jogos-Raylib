@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 
+#include "Block.h"
+#include "Enemy.h"
 #include "raylib.h"
 
 typedef struct Bullet {
@@ -17,8 +19,12 @@ typedef struct Bullet {
     float horizontalAngle;
     float verticalAngle;
 
+    bool collided;
+
 } Bullet;
 
 Bullet createBullet();
 void drawBullet( Bullet *bullet );
 void updateBullet( Bullet *bullet, float delta );
+bool checkCollisionBulletBlock( Bullet *bullet, Block *block );
+bool checkCollisionBulletEnemy( Bullet *bullet, Enemy *enemy );

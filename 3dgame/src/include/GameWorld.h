@@ -29,12 +29,14 @@ typedef struct GameWorld {
     Vector2 previousMousePos;
     
     Player player;
-    Enemy enemy;
+
+    Enemy *enemies;
+    int enemyQuantity;
     
     Block ground;
 
     Block *obstacles;
-    int obstaclesQuantity;
+    int obstacleQuantity;
 
     Block leftWall;
     Block rightWall;
@@ -89,3 +91,8 @@ void resolveCollisionEnemyGround( Enemy *enemy, Block *ground );
 void resolveCollisionPlayerWalls( Player *player, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall );
 void resolveCollisionEnemyWalls( Enemy *enemy, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall );
 void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy );
+void resolveCollisionBulletWorld( Bullet *bullets, int bulletQuantity, GameWorld *gw );
+
+void createEnemies( GameWorld *gw, Color enemyColor );
+void createEnemiesModel( Enemy *enemies, int enemyQuantity );
+void destroyEnemiesModel( Enemy *enemies, int enemyQuantity );

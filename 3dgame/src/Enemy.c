@@ -1,23 +1,19 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "GameWorld.h"
-#include "Block.h"
 #include "Enemy.h"
+#include "Block.h"
+#include "GameWorld.h"
 #include "raylib.h"
 
-Enemy createEnemy() {
+Enemy createEnemy( Vector3 pos, Color color ) {
 
     float cpThickness = 1.0f;
     float cpDiff = 0.7f;
     float enemyThickness = 2.0f;
 
     Enemy enemy = {
-        .pos = {
-            .x = -10.0f,
-            .y = 1.0f,
-            .z = 0.0f
-        },
+        .pos = pos,
         .lastPos = {
             .x = 0.0f,
             .y = 1.0f,
@@ -35,7 +31,7 @@ Enemy createEnemy() {
         },
         .speed = 20.0f,
         .jumpSpeed = 20.0f,
-        .color = Fade( BLUE, 0.8f ),
+        .color = color,
         .showWiresOnly = false,
         .showCollisionProbes = false,
 
@@ -57,7 +53,8 @@ Enemy createEnemy() {
         .cpDimBT = { enemyThickness - cpDiff, cpThickness, enemyThickness - cpDiff },
         .cpDimFN = { enemyThickness - cpDiff, enemyThickness - cpDiff, cpThickness },
 
-        .positionState = ENEMY_POSITION_STATE_ON_GROUND
+        .positionState = ENEMY_POSITION_STATE_ON_GROUND,
+        .state = ENEMY_STATE_ALIVE
 
     };
 
@@ -75,49 +72,55 @@ Enemy createEnemy() {
     enemy.cpFar.color = YELLOW;
     enemy.cpNear.color = WHITE;
 
-    createEnemyModel( &enemy );
-
     return enemy;
 
 }
 
 void drawEnemy( Enemy *enemy ) {
     
-    if ( enemy->showCollisionProbes ) {
-        drawBlock( &enemy->cpLeft );
-        drawBlock( &enemy->cpRight );
-        drawBlock( &enemy->cpBottom );
-        drawBlock( &enemy->cpTop );
-        drawBlock( &enemy->cpFar );
-        drawBlock( &enemy->cpNear );
-    }
+    if ( enemy->state == ENEMY_STATE_ALIVE ) {
 
-    if ( !enemy->showWiresOnly ) {
-        DrawModelEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, WHITE );
-    }
+        if ( enemy->showCollisionProbes ) {
+            drawBlock( &enemy->cpLeft );
+            drawBlock( &enemy->cpRight );
+            drawBlock( &enemy->cpBottom );
+            drawBlock( &enemy->cpTop );
+            drawBlock( &enemy->cpFar );
+            drawBlock( &enemy->cpNear );
+        }
 
-    DrawModelWiresEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, BLACK );
+        if ( !enemy->showWiresOnly ) {
+            DrawModelEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, enemy->color );
+        }
+
+        DrawModelWiresEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, BLACK );
+
+    }
 
 }
 
 void updateEnemy( Enemy *enemy, float delta ) {
 
-    enemy->lastPos = enemy->pos;
+    if ( enemy->state == ENEMY_STATE_ALIVE ) {
 
-    enemy->pos.x += enemy->vel.x * delta;
-    enemy->pos.y += enemy->vel.y * delta;
-    enemy->pos.z += enemy->vel.z * delta;
+        enemy->lastPos = enemy->pos;
 
-    enemy->vel.y -= GRAVITY * delta;
+        enemy->pos.x += enemy->vel.x * delta;
+        enemy->pos.y += enemy->vel.y * delta;
+        enemy->pos.z += enemy->vel.z * delta;
 
-    enemy->rotationHorizontalAngle += enemy->rotationVel * delta;
+        enemy->vel.y -= GRAVITY * delta;
 
-    if ( enemy->pos.y < enemy->lastPos.y ) {
-        enemy->positionState = ENEMY_POSITION_STATE_FALLING;
-    } else if ( enemy->pos.y > enemy->lastPos.y ) {
-        enemy->positionState = ENEMY_POSITION_STATE_JUMPING;
-    } else {
-        enemy->positionState = ENEMY_POSITION_STATE_ON_GROUND;
+        enemy->rotationHorizontalAngle += enemy->rotationVel * delta;
+
+        if ( enemy->pos.y < enemy->lastPos.y ) {
+            enemy->positionState = ENEMY_POSITION_STATE_FALLING;
+        } else if ( enemy->pos.y > enemy->lastPos.y ) {
+            enemy->positionState = ENEMY_POSITION_STATE_JUMPING;
+        } else {
+            enemy->positionState = ENEMY_POSITION_STATE_ON_GROUND;
+        }
+
     }
 
 }
@@ -223,7 +226,7 @@ void createEnemyModel( Enemy *enemy ) {
     enemy->mesh = GenMeshCube( enemy->dim.x, enemy->dim.y, enemy->dim.z );
     enemy->model = LoadModelFromMesh( enemy->mesh );
 
-    Image img = GenImageChecked( 2, 2, 1, 1, RED, MAROON );
+    Image img = GenImageChecked( 2, 2, 1, 1, WHITE, LIGHTGRAY );
     Texture2D texture = LoadTextureFromImage( img );
     UnloadImage( img );
 

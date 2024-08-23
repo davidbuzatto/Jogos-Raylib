@@ -19,9 +19,6 @@
 #include <math.h>
 
 #include "GameWorld.h"
-#include "ResourceManager.h"
-#include "Player.h"
-#include "Block.h"
 
 #include "raylib.h"
 //#include "raymath.h"
@@ -34,7 +31,7 @@ const int CAMERA_TYPE_QUANTITY = 4;
 const bool CREATE_OBSTACLES = true;
 
 bool showInfo = false;
-bool drawWalls = false;
+bool drawWalls = true;
 
 float xCam = 0.0f;
 float yCam = 25.0f;
@@ -57,21 +54,21 @@ GameWorld* createGameWorld( void ) {
 
     GameWorld *gw = (GameWorld*) malloc( sizeof( GameWorld ) );
     Color wallColor = Fade( DARKGREEN, 0.5f );
-    Color obstacleColor = Fade( LIME, 0.8f );
+    Color obstacleColor = LIME;
+    Color enemyColor = RED;
 
     gw->previousMousePos = (Vector2){0};
 
     gw->player = createPlayer();
-    gw->enemy = createEnemy();
-    gw->ground = createGround( blockSize, lines, columns );
+    createEnemies( gw, enemyColor );
 
+    gw->ground = createGround( blockSize, lines, columns );
+    createWalls( gw, wallColor );
     if ( CREATE_OBSTACLES ) {
         createObstacles( gw, blockSize, obstacleColor );
     } else {
-        gw->obstaclesQuantity = 0;
+        gw->obstacleQuantity = 0;
     }
-
-    createWalls( gw, wallColor );
 
     //gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
     gw->cameraType = CAMERA_TYPE_FIRST_PERSON;
@@ -87,10 +84,12 @@ GameWorld* createGameWorld( void ) {
  * @brief Destroys a GameWindow object and its dependecies.
  */
 void destroyGameWorld( GameWorld *gw ) {
-    free( gw->obstacles );
     destroyPlayerModel( &gw->player );
-    destroyEnemyModel( &gw->enemy );
+    destroyEnemiesModel( gw->enemies, gw->enemyQuantity );
+    free( gw->enemies );
     destroyGroundModel( &gw->ground );
+    destroyObstaclesModel( gw->obstacles, gw->obstacleQuantity );
+    free( gw->obstacles );
     free( gw );
 }
 
@@ -102,7 +101,6 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
     float delta = GetFrameTime();
 
     Player *player = &gw->player;
-    Enemy *enemy = &gw->enemy;
     Block *ground = &gw->ground;
     Block *leftWall = &gw->leftWall;
     Block *rightWall = &gw->rightWall;
@@ -115,19 +113,27 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     updatePlayer( player, delta );
     updatePlayerCollisionProbes( player );
-
-    updateEnemy( enemy, delta );
-    updateEnemyCollisionProbes( enemy );
-
+    
     resolveCollisionPlayerObstacles( player, gw );
     updatePlayerCollisionProbes( player );
-
     resolveCollisionPlayerGround( player, ground );
-    resolveCollisionEnemyGround( enemy, ground );
-
     resolveCollisionPlayerWalls( player, leftWall, rightWall, farWall, nearWall );
-    resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
-    resolveCollisionPlayerEnemy( player, enemy );
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        Enemy *enemy = &gw->enemies[i];
+        if ( enemy->positionState == ENEMY_POSITION_STATE_ON_GROUND ) {
+            if ( GetRandomValue( 0, 100 ) == 0 ) {
+                jumpEnemy( enemy );
+            }
+        }
+        updateEnemy( enemy, delta );
+        updateEnemyCollisionProbes( enemy );
+        resolveCollisionEnemyGround( enemy, ground );
+        resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
+        resolveCollisionPlayerEnemy( player, enemy );
+    }
+
+    resolveCollisionBulletWorld( player->bullets, player->bulletQuantity, gw );
 
     updateCameraTarget( gw, &gw->player );
     updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
@@ -148,9 +154,12 @@ void drawGameWorld( GameWorld *gw ) {
 
     drawBlock( &gw->ground );
     drawPlayer( &gw->player );
-    drawEnemy( &gw->enemy );
+    
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        drawEnemy( &gw->enemies[i] );
+    }
 
-    for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+    for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
         drawBlock( &gw->obstacles[i] );
     }
 
@@ -318,8 +327,8 @@ void destroyGroundModel( Block *ground ) {
 
 void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
 
-    gw->obstaclesQuantity = 44;
-    gw->obstacles = (Block*) malloc( sizeof( Block ) * gw->obstaclesQuantity );
+    gw->obstacleQuantity = 44;
+    gw->obstacles = (Block*) malloc( sizeof( Block ) * gw->obstacleQuantity );
 
     Vector3 positions[] = {
         
@@ -371,7 +380,7 @@ void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
         { 40, 7, -2 },
     };
 
-    for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+    for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
         gw->obstacles[i] = (Block){
             .pos = positions[i],
             .dim = { blockSize, blockSize, blockSize },
@@ -384,7 +393,7 @@ void createObstacles( GameWorld *gw, float blockSize, Color obstacleColor ) {
         };
     }
 
-    createObstaclesModel( gw->obstacles, gw->obstaclesQuantity );
+    createObstaclesModel( gw->obstacles, gw->obstacleQuantity );
 
 }
 
@@ -506,7 +515,7 @@ void processOptionsInput( Player *player, GameWorld *gw ) {
     }
 
     if ( IsKeyPressed( KEY_FIVE ) ) {
-        for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+        for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
             gw->obstacles[i].renderTouchColor = !gw->obstacles[i].renderTouchColor;
         }
     }
@@ -518,9 +527,12 @@ void processOptionsInput( Player *player, GameWorld *gw ) {
         player->pos = (Vector3){ 0.0, 1.0, 0.0 };
         player->rotationHorizontalAngle = 0.0f;
         updatePlayerCollisionProbes( player );
-        gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
-        for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+        //gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
+        for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
             gw->obstacles[i].touchColor = gw->obstacles[i].color;
+        }
+        for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+            gw->enemies[i].state = ENEMY_STATE_ALIVE;
         }
     }
 
@@ -661,7 +673,7 @@ void processPlayerInput( Player *player, CameraType cameraType, float delta, boo
 
 void resolveCollisionPlayerObstacles( Player *player, GameWorld *gw ) {
 
-    for ( int i = 0; i < gw->obstaclesQuantity; i++ ) {
+    for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
         Block *obs = &gw->obstacles[i];
         PlayerCollisionType coll = checkCollisionPlayerBlock( player, obs, true );
         switch ( coll ) {
@@ -770,6 +782,152 @@ void resolveCollisionEnemyWalls( Enemy *enemy, Block *leftWall, Block *rightWall
 
 void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy ) {
 
-    
+    if ( enemy->state == ENEMY_STATE_ALIVE ) {
 
+        PlayerCollisionType coll = checkCollisionPlayerEnemy( player, enemy, true );
+
+        switch ( coll ) {
+            case PLAYER_COLLISION_LEFT:
+                player->pos.x = enemy->pos.x + enemy->dim.x / 2 + player->dim.x / 2;
+                break;
+            case PLAYER_COLLISION_RIGHT:
+                player->pos.x = enemy->pos.x - enemy->dim.x / 2 - player->dim.x / 2;
+                break;
+            case PLAYER_COLLISION_BOTTOM:
+                player->pos.y = enemy->pos.y + enemy->dim.y / 2 + player->dim.y / 2;
+                player->vel.y = 0.0f;
+                break;
+            case PLAYER_COLLISION_TOP:
+                player->pos.y = enemy->pos.y - enemy->dim.y / 2 - player->dim.y / 2 - 0.05f;
+                player->vel.y = 0.0f;
+                break;
+            case PLAYER_COLLISION_FAR:
+                player->pos.z = enemy->pos.z + enemy->dim.z / 2 + player->dim.z / 2;
+                break;
+            case PLAYER_COLLISION_NEAR:
+                player->pos.z = enemy->pos.z - enemy->dim.z / 2 - player->dim.z / 2;
+                break;
+            case PLAYER_COLLISION_ALL:
+            case PLAYER_COLLISION_NONE:
+            default:
+                break;
+        }
+
+    }
+    
+}
+
+void resolveCollisionBulletWorld( Bullet *bullets, int bulletQuantity, GameWorld *gw ) {
+
+    Block *ground = &gw->ground;
+
+    for ( int i = 0; i < bulletQuantity; i++ ) {
+
+        Bullet *bullet = &bullets[i];
+
+        if ( !bullet->collided ) {
+
+            // scenario
+            if ( checkCollisionBulletBlock( bullet, ground ) || 
+                 checkCollisionBulletBlock( bullet, &gw->leftWall ) ||
+                 checkCollisionBulletBlock( bullet, &gw->rightWall ) ||
+                 checkCollisionBulletBlock( bullet, &gw->farWall ) ||
+                 checkCollisionBulletBlock( bullet, &gw->nearWall ) ) {
+                bullet->collided = true;
+            } else {
+                for ( int j = 0; j < gw->obstacleQuantity; j++ ) {
+                    if ( checkCollisionBulletBlock( bullet, &gw->obstacles[j] ) ) {
+                        bullet->collided = true;
+                        break;
+                    }
+                }
+            }
+
+            // enemies
+            if ( !bullet->collided ) {
+                for ( int j = 0; j < gw->enemyQuantity; j++ ) {
+                    if ( gw->enemies[j].state == ENEMY_STATE_ALIVE && 
+                         checkCollisionBulletEnemy( bullet, &gw->enemies[j] ) ) {
+                        bullet->collided = true;
+                        gw->enemies[j].state = ENEMY_STATE_DEAD;
+                        // TODO: remove enemy from game world (take care of the model -> one model per enemy!)
+                        break;
+                    }
+                }
+            }
+
+            if ( bullet->collided ) {
+                // TODO: remove bullet from game world
+            }
+
+        }
+
+    }
+
+}
+
+void createEnemies( GameWorld *gw, Color enemyColor ) {
+
+    gw->enemyQuantity = 18;
+    gw->enemies = (Enemy*) malloc( sizeof( Enemy ) * gw->enemyQuantity );
+
+    Vector3 positions[] = {
+
+        { -46, 1, -6 },
+        { -46, 1, 0 },
+        { -46, 1, 6 },
+
+        { -40, 1, -8 },
+        { -40, 1, -2 },
+        { -40, 1, 4 },
+
+        { -34, 1, -6 },
+        { -34, 1, 0 },
+        { -34, 1, 6 },
+
+        { -28, 1, -8 },
+        { -28, 1, -2 },
+        { -28, 1, 4 },
+
+        { -22, 1, -6 },
+        { -22, 1, 0 },
+        { -22, 1, 6 },
+
+        { -16, 1, -8 },
+        { -16, 1, -2 },
+        { -16, 1, 4 },
+
+    };
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        gw->enemies[i] = createEnemy( positions[i], enemyColor );
+    }
+
+    createEnemiesModel( gw->enemies, gw->enemyQuantity );
+
+}
+
+void createEnemiesModel( Enemy *enemies, int enemyQuantity ) {
+
+    Enemy *baseObstacle = &enemies[0];
+
+    Image img = GenImageChecked( 2, 2, 1, 1, WHITE, LIGHTGRAY );
+    Texture2D texture = LoadTextureFromImage( img );
+    UnloadImage( img );
+
+    baseObstacle->mesh = GenMeshCube( baseObstacle->dim.x, baseObstacle->dim.y, baseObstacle->dim.z );
+    baseObstacle->model = LoadModelFromMesh( baseObstacle->mesh );
+    baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+
+    for ( int i = 1; i < enemyQuantity; i++ ) {
+        enemies[i].mesh = baseObstacle->mesh;
+        enemies[i].model = baseObstacle->model;
+    }
+
+}
+
+void destroyEnemiesModel( Enemy *enemies, int enemyQuantity ) {
+    Enemy *baseObstacle = &enemies[0];
+    UnloadTexture( baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
+    UnloadModel( baseObstacle->model );
 }
