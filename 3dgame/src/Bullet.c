@@ -2,10 +2,11 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "Gameworld.h"
+#include "Types.h"
+#include "GameWorld.h"
+#include "Enemy.h"
 #include "Block.h"
 #include "Bullet.h"
-#include "Enemy.h"
 #include "raylib.h"
 
 Bullet createBullet() {

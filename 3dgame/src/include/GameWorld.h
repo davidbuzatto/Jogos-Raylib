@@ -7,43 +7,11 @@
  */
 #pragma once
 
-#include "Player.h"
-#include "Enemy.h"
-#include "Block.h"
+#include "Types.h"
 #include "raylib.h"
 
 extern const float GRAVITY;
 extern const int CAMERA_TYPE_QUANTITY;
-
-typedef enum CameraType {
-    CAMERA_TYPE_THIRD_PERSON_FIXED,
-    CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER,
-    CAMERA_TYPE_FIRST_PERSON,
-    CAMERA_TYPE_FIRST_PERSON_MOUSE
-} CameraType;
-
-typedef struct GameWorld {
-
-    Camera3D camera;
-    CameraType cameraType;
-    Vector2 previousMousePos;
-    
-    Player player;
-
-    Enemy *enemies;
-    int enemyQuantity;
-    
-    Block ground;
-
-    Block *obstacles;
-    int obstacleQuantity;
-
-    Block leftWall;
-    Block rightWall;
-    Block farWall;
-    Block nearWall;
-
-} GameWorld;
 
 /**
  * @brief Creates a dinamically allocated GameWorld struct instance.
@@ -93,6 +61,3 @@ void resolveCollisionEnemyWalls( Enemy *enemy, Block *leftWall, Block *rightWall
 void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy );
 void resolveCollisionBulletWorld( Bullet *bullets, int bulletQuantity, GameWorld *gw );
 
-void createEnemies( GameWorld *gw, Color enemyColor );
-void createEnemiesModel( Enemy *enemies, int enemyQuantity );
-void destroyEnemiesModel( Enemy *enemies, int enemyQuantity );

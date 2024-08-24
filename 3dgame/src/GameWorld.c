@@ -8,19 +8,25 @@
 
 /**
  * TODO:
- *   - Detectar colisão apenas de objetos que estão perto do jogador.
+ *   - Detectar colisão apenas de objetos que estão perto do jogador;
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
  *     deve ser posicionada atrás baseada em um ângulo e mirar em 180 do centro
- *     do personagem.
+ *     do personagem (insight apenas);
+ *   - Ajustar movimentação com o mouse e teclas.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
+#include "Types.h"
 #include "GameWorld.h"
-
+#include "Player.h"
+#include "Enemy.h"
+#include "Bullet.h"
+#include "Block.h"
 #include "raylib.h"
+
 //#include "raymath.h"
 //#define RAYGUI_IMPLEMENTATION    // to use raygui, comment these three lines.
 //#include "raygui.h"              // other compilation units must only include
@@ -864,70 +870,4 @@ void resolveCollisionBulletWorld( Bullet *bullets, int bulletQuantity, GameWorld
 
     }
 
-}
-
-void createEnemies( GameWorld *gw, Color enemyColor ) {
-
-    gw->enemyQuantity = 18;
-    gw->enemies = (Enemy*) malloc( sizeof( Enemy ) * gw->enemyQuantity );
-
-    Vector3 positions[] = {
-
-        { -46, 1, -6 },
-        { -46, 1, 0 },
-        { -46, 1, 6 },
-
-        { -40, 1, -8 },
-        { -40, 1, -2 },
-        { -40, 1, 4 },
-
-        { -34, 1, -6 },
-        { -34, 1, 0 },
-        { -34, 1, 6 },
-
-        { -28, 1, -8 },
-        { -28, 1, -2 },
-        { -28, 1, 4 },
-
-        { -22, 1, -6 },
-        { -22, 1, 0 },
-        { -22, 1, 6 },
-
-        { -16, 1, -8 },
-        { -16, 1, -2 },
-        { -16, 1, 4 },
-
-    };
-
-    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
-        gw->enemies[i] = createEnemy( positions[i], enemyColor );
-    }
-
-    createEnemiesModel( gw->enemies, gw->enemyQuantity );
-
-}
-
-void createEnemiesModel( Enemy *enemies, int enemyQuantity ) {
-
-    Enemy *baseObstacle = &enemies[0];
-
-    Image img = GenImageChecked( 2, 2, 1, 1, WHITE, LIGHTGRAY );
-    Texture2D texture = LoadTextureFromImage( img );
-    UnloadImage( img );
-
-    baseObstacle->mesh = GenMeshCube( baseObstacle->dim.x, baseObstacle->dim.y, baseObstacle->dim.z );
-    baseObstacle->model = LoadModelFromMesh( baseObstacle->mesh );
-    baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
-
-    for ( int i = 1; i < enemyQuantity; i++ ) {
-        enemies[i].mesh = baseObstacle->mesh;
-        enemies[i].model = baseObstacle->model;
-    }
-
-}
-
-void destroyEnemiesModel( Enemy *enemies, int enemyQuantity ) {
-    Enemy *baseObstacle = &enemies[0];
-    UnloadTexture( baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
-    UnloadModel( baseObstacle->model );
 }

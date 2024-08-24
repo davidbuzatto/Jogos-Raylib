@@ -1,3 +1,4 @@
+#include "Types.h"
 #include "Block.h"
 #include "raylib.h"
 

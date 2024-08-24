@@ -2,9 +2,11 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include "Types.h"
 #include "GameWorld.h"
 #include "Block.h"
 #include "Bullet.h"
+#include "Enemy.h"
 #include "Player.h"
 #include "raylib.h"
 
@@ -20,7 +22,7 @@ Player createPlayer() {
         .pos = {
             .x = 0.0f,
             .y = 1.0f,
-            .z = 0.0f
+            .z = -1.0f
         },
         .lastPos = {
             .x = 0.0f,

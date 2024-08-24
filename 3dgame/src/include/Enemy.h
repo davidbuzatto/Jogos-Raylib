@@ -2,70 +2,8 @@
 
 #include <stdbool.h>
 
-#include "Block.h"
+#include "Types.h"
 #include "raylib.h"
-
-typedef enum EnemyCollisionType {
-    ENEMY_COLLISION_LEFT,
-    ENEMY_COLLISION_RIGHT,
-    ENEMY_COLLISION_BOTTOM,
-    ENEMY_COLLISION_TOP,
-    ENEMY_COLLISION_FAR,
-    ENEMY_COLLISION_NEAR,
-    ENEMY_COLLISION_ALL,
-    ENEMY_COLLISION_NONE
-} EnemyCollisionType;
-
-typedef enum EnemyPositionState {
-    ENEMY_POSITION_STATE_ON_GROUND,
-    ENEMY_POSITION_STATE_JUMPING,
-    ENEMY_POSITION_STATE_FALLING
-} EnemyPositionState;
-
-typedef enum EnemyState {
-    ENEMY_STATE_ALIVE,
-    ENEMY_STATE_DYING,
-    ENEMY_STATE_DEAD
-} EnemyState;
-
-typedef struct Enemy {
-
-    Vector3 pos;
-    Vector3 lastPos;
-    Vector3 dim;
-    Vector3 vel;
-
-    float speed;
-    float jumpSpeed;
-
-    Color color;
-    bool showWiresOnly;
-    bool showCollisionProbes;
-
-    Mesh mesh;
-    Model model;
-    Vector3 rotationAxis;
-    float rotationHorizontalAngle;
-    float rotationVel;
-    float rotationSpeed;
-    Vector3 scale;
-
-    // cp = collision probe
-    Block cpLeft;
-    Block cpRight;
-    Block cpBottom;
-    Block cpTop;
-    Block cpFar;
-    Block cpNear;
-
-    Vector3 cpDimLR;
-    Vector3 cpDimBT;
-    Vector3 cpDimFN;
-
-    EnemyPositionState positionState;
-    EnemyState state;
-
-} Enemy;
 
 Enemy createEnemy( Vector3 pos, Color color );
 void drawEnemy( Enemy *enemy );
@@ -76,3 +14,7 @@ EnemyCollisionType checkCollisionEnemyBlock( Enemy *enemy, Block *block, bool ch
 BoundingBox getEnemyBoundingBox( Enemy *enemy );
 void createEnemyModel( Enemy *enemy );
 void destroyEnemyModel( Enemy *enemy );
+
+void createEnemies( GameWorld *gw, Color enemyColor );
+void createEnemiesModel( Enemy *enemies, int enemyQuantity );
+void destroyEnemiesModel( Enemy *enemies, int enemyQuantity );
