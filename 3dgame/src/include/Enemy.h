@@ -7,6 +7,7 @@
 
 Enemy createEnemy( Vector3 pos, Color color );
 void drawEnemy( Enemy *enemy );
+void drawEnemyHpBar( Enemy *enemy, Camera3D camera );
 void updateEnemy( Enemy *enemy, float delta );
 void updateEnemyCollisionProbes( Enemy *enemy );
 void jumpEnemy( Enemy *enemy );

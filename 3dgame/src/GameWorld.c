@@ -8,8 +8,8 @@
 
 /**
  * TODO:
+ *   - Desenhar apenas as barras de vida dos inimigos que estão visíveis;
  *   - Vida do jogador;
- *   - Vida dos inimigos;
  *   - Itens (cura e munição).
  *   - Ajustar movimentação com o mouse e teclas.
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
@@ -184,6 +184,10 @@ void drawGameWorld( GameWorld *gw ) {
     }
 
     EndMode3D();
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        drawEnemyHpBar( &gw->enemies[i], gw->camera );
+    }
 
     drawReticle( gw->cameraType, gw->player.weaponState, 30 );
 
@@ -894,22 +898,39 @@ void resolveCollisionBulletWorld( GameWorld *gw ) {
 
         // enemies
         if ( !bullet->collided ) {
+
             for ( int j = 0; j < gw->enemyQuantity; j++ ) {
-                if ( gw->enemies[j].state == ENEMY_STATE_ALIVE && 
-                        checkCollisionBulletEnemy( bullet, &gw->enemies[j] ) ) {
+
+                Enemy *enemy = &gw->enemies[j];
+
+                if ( enemy->state == ENEMY_STATE_ALIVE && 
+                     checkCollisionBulletEnemy( bullet, enemy ) ) {
+                    
                     bullet->collided = true;
-                    gw->enemies[j].state = ENEMY_STATE_DEAD;
-                    cleanDeadEnemies( gw );
+
+                    if ( enemy->currentHp > 0 ) {
+                        enemy->currentHp--;
+                        enemy->showHpBar = true;
+                        if ( enemy->currentHp == 0 ) {
+                            enemy->state = ENEMY_STATE_DEAD;
+                            cleanDeadEnemies( gw );
+                        }
+                    }
+
                     break;
+
                 }
+
             }
+
         }
 
         // out of bounds
         if ( !bullet->collided ) {
-            if ( sqrt( bullet->pos.x * bullet->pos.x +
-                        bullet->pos.y * bullet->pos.y +
-                        bullet->pos.z * bullet->pos.z ) > gw->ground.dim.x * 2 ) {
+            if ( bullet->pos.x * bullet->pos.x +
+                 bullet->pos.y * bullet->pos.y +
+                 bullet->pos.z * bullet->pos.z > 
+                 ( gw->ground.dim.x * gw->ground.dim.x * 4 ) ) {
                 bullet->collided = true;
             }
         }

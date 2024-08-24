@@ -182,6 +182,13 @@ typedef struct Enemy {
     EnemyPositionState positionState;
     EnemyState state;
 
+    int maxHp;
+    int currentHp;
+
+    bool showHpBar;
+    float timeShowingHpBar;
+    float hpBarShowCounter;
+
 } Enemy;
 
 typedef struct GameWorld {

@@ -51,7 +51,7 @@ Player createPlayer() {
         .mesh = { 0 },
         .model = { 0 },
         .rotationAxis = { 0.0f, 1.0f, 0.0f },
-        .rotationHorizontalAngle = 0.0f,
+        .rotationHorizontalAngle = 180.0f,
         .rotationVerticalAngle = 90.0f,
         .rotationVel = 0.0f,
         .rotationSpeed = 150.0f,

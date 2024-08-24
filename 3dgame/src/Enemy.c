@@ -56,7 +56,13 @@ Enemy createEnemy( Vector3 pos, Color color ) {
         .cpDimFN = { enemyThickness - cpDiff, enemyThickness - cpDiff, cpThickness },
 
         .positionState = ENEMY_POSITION_STATE_ON_GROUND,
-        .state = ENEMY_STATE_ALIVE
+        .state = ENEMY_STATE_ALIVE,
+
+        .maxHp = 5,
+        .currentHp = 5,
+        .showHpBar = false,
+        .timeShowingHpBar = 4.0f,
+        .hpBarShowCounter = 0.0f
 
     };
 
@@ -97,6 +103,24 @@ void drawEnemy( Enemy *enemy ) {
 
 }
 
+void drawEnemyHpBar( Enemy *enemy, Camera3D camera ) {
+
+    if ( enemy->showHpBar && enemy->state == ENEMY_STATE_ALIVE ) {
+
+        int barWidth = 120;
+        int barHeight = 10;
+
+        Vector3 p = enemy->pos;
+        p.y += enemy->dim.y - 0.5f;
+
+        Vector2 v = GetWorldToScreen( p, camera );
+        DrawRectangle( v.x - barWidth / 2, v.y - barHeight / 2, barWidth * ( (float) enemy->currentHp / enemy->maxHp ), barHeight, RED );
+        DrawRectangleLines( v.x - barWidth / 2, v.y - barHeight / 2, barWidth, barHeight, BLACK );
+
+    }
+
+}
+
 void updateEnemy( Enemy *enemy, float delta ) {
 
     enemy->lastPos = enemy->pos;
@@ -115,6 +139,14 @@ void updateEnemy( Enemy *enemy, float delta ) {
         enemy->positionState = ENEMY_POSITION_STATE_JUMPING;
     } else {
         enemy->positionState = ENEMY_POSITION_STATE_ON_GROUND;
+    }
+
+    if ( enemy->showHpBar ) {
+        enemy->hpBarShowCounter += delta;
+        if ( enemy->hpBarShowCounter >= enemy->timeShowingHpBar ) {
+            enemy->hpBarShowCounter = 0.0f;
+            enemy->showHpBar = false;
+        }
     }
 
 }
