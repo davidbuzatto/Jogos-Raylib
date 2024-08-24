@@ -8,7 +8,6 @@
 
 /**
  * TODO:
- *   - Desenhar apenas as barras de vida dos inimigos que estão visíveis;
  *   - Itens (cura e munição).
  *   - Reiniciar ao morrer;
  *   - Ajustar movimentação com o mouse e teclas.
@@ -144,6 +143,7 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         resolveCollisionEnemyGround( enemy, ground );
         resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
         resolveCollisionPlayerEnemy( player, enemy );
+        setEnemyDetectedByPlayer( enemy, &gw->player, true );
     }
 
     resolveCollisionBulletWorld( gw );
@@ -263,8 +263,8 @@ void updateCameraTarget( GameWorld *gw, Player *player ) {
 
 void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float yOffset, float zOffset ) {
 
-    float cosa = cos( DEG2RAD * player->rotationHorizontalAngle );
-    float sina = -sin( DEG2RAD * player->rotationHorizontalAngle );
+    float cosH = cos( DEG2RAD * player->rotationHorizontalAngle );
+    float sinH = -sin( DEG2RAD * player->rotationHorizontalAngle );
 
     switch ( gw->cameraType ) {
         case CAMERA_TYPE_THIRD_PERSON_FIXED:
@@ -274,15 +274,15 @@ void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float y
             break;
         case CAMERA_TYPE_THIRD_PERSON_FIXED_SHOULDER:
             gw->camera.position = player->pos;
-            gw->camera.position.x += cosa * ( -player->dim.x * 4 );
+            gw->camera.position.x += cosH * ( -player->dim.x * 4 );
             gw->camera.position.y += player->dim.y;
-            gw->camera.position.z += sina * ( -player->dim.z * 4 );
+            gw->camera.position.z += sinH * ( -player->dim.z * 4 );
             break;
         case CAMERA_TYPE_FIRST_PERSON:
         case CAMERA_TYPE_FIRST_PERSON_MOUSE:
             gw->camera.position = player->pos;
-            gw->camera.position.x += cosa * ( player->dim.x / 2 );
-            gw->camera.position.z += sina * ( player->dim.z / 2 );
+            gw->camera.position.x += cosH * ( player->dim.x / 2 );
+            gw->camera.position.z += sinH * ( player->dim.z / 2 );
             break;
     }
 

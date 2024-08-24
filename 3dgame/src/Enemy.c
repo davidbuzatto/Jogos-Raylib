@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "Types.h"
 #include "GameWorld.h"
@@ -60,6 +61,8 @@ Enemy createEnemy( Vector3 pos, Color color ) {
 
         .maxHp = 5,
         .currentHp = 5,
+
+        .detectedByPlayer = false,
         .showHpBar = false,
         .timeShowingHpBar = 4.0f,
         .hpBarShowCounter = 0.0f,
@@ -106,7 +109,7 @@ void drawEnemy( Enemy *enemy ) {
 
 void drawEnemyHpBar( Enemy *enemy, Camera3D camera ) {
 
-    if ( enemy->showHpBar && enemy->state == ENEMY_STATE_ALIVE ) {
+    if ( enemy->showHpBar && enemy->state == ENEMY_STATE_ALIVE && enemy->detectedByPlayer ) {
 
         float barWidth = 120.0f;
         int barHeight = 10;
@@ -341,4 +344,53 @@ void destroyEnemiesModel( Enemy *enemies, int enemyQuantity ) {
     Enemy *baseObstacle = &enemies[0];
     UnloadTexture( baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
     UnloadModel( baseObstacle->model );
+}
+
+void setEnemyDetectedByPlayer( Enemy *enemy, Player *player, bool showLines ) {
+
+    float t = 50.0f;
+    float a = 44.0f;
+
+    Vector3 vpos = player->pos;
+    vpos.y = 0;
+
+    Vector3 vdes1 = {
+        vpos.x + cos( DEG2RAD * ( player->rotationHorizontalAngle + a ) ) * t,
+        vpos.y,
+        vpos.z + -sin( DEG2RAD * ( player->rotationHorizontalAngle + a ) ) * t
+    };
+
+    Vector3 vdes2 = {
+        vpos.x + cos( DEG2RAD * ( player->rotationHorizontalAngle - a ) ) * t,
+        vpos.y,
+        vpos.z + -sin( DEG2RAD * ( player->rotationHorizontalAngle - a ) ) * t
+    };
+
+    if ( showLines ) {
+        DrawLine3D( vpos, vdes1, BLACK );
+        DrawLine3D( vpos, vdes2, BLACK );
+    }
+
+    Vector2 pEnemy = {
+        .x = enemy->pos.x,
+        .y = enemy->pos.z
+    };
+
+    Vector2 ptri1 = {
+        .x = vpos.x,
+        .y = vpos.z
+    };
+
+    Vector2 ptri2 = {
+        .x = vdes1.x,
+        .y = vdes1.z
+    };
+
+    Vector2 ptri3 = {
+        .x = vdes2.x,
+        .y = vdes2.z
+    };
+
+    enemy->detectedByPlayer = CheckCollisionPointTriangle( pEnemy, ptri1, ptri2, ptri3 );
+
 }

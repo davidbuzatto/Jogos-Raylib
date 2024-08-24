@@ -19,3 +19,4 @@ void destroyEnemyModel( Enemy *enemy );
 void createEnemies( GameWorld *gw, Color enemyColor );
 void createEnemiesModel( Enemy *enemies, int enemyQuantity );
 void destroyEnemiesModel( Enemy *enemies, int enemyQuantity );
+void setEnemyDetectedByPlayer( Enemy *enemy, Player *player, bool showLines );

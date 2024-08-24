@@ -133,7 +133,6 @@ void drawPlayerHud( Player *player ) {
     int yMargin = 10;
     double t = (float) player->currentHp / player->maxHp;
 
-    //DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolate2Color( RED, LIME, t ) );
     DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolate3Color( RED, ORANGE, LIME, t ) );
     DrawRectangleLines( xMargin, h - yMargin - 47, 140, 20, BLACK );
 

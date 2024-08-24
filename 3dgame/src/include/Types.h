@@ -189,6 +189,7 @@ typedef struct Enemy {
     int maxHp;
     int currentHp;
 
+    bool detectedByPlayer;
     bool showHpBar;
     float timeShowingHpBar;
     float hpBarShowCounter;
