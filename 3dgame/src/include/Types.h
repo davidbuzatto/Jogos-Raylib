@@ -70,7 +70,11 @@ typedef struct Block {
 
 } Block;
 
+extern int bulletCount;
+
 typedef struct Bullet {
+
+    int id;
 
     Vector3 pos;
     float radius;
@@ -137,8 +141,12 @@ typedef struct Player {
 
 } Player;
 
+extern int enemyCount;
+
 typedef struct Enemy {
 
+    int id;
+    
     Vector3 pos;
     Vector3 lastPos;
     Vector3 dim;

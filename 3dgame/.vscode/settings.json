@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "types.h": "c",
-        "player.h": "c",
-        "raylib.h": "c"
-    }
-}

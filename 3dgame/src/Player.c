@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
 
@@ -16,7 +17,7 @@ Player createPlayer() {
     float cpDiff = 0.7f;
     float playerThickness = 2.0f;
 
-    int maxBullets = 1000;
+    int maxBullets = 200;
 
     Player player = {
         .pos = {
@@ -322,5 +323,42 @@ void playerShotBullet( Player *player ) {
         }
 
     }
+
+}
+
+void cleanCollidedBullets( Player *player ) {
+
+    // naive algorithm
+    int collidedCount = 0;
+
+    for ( int i = 0; i < player->bulletQuantity; i++ ) {
+        if ( player->bullets[i].collided ) {
+            collidedCount++;
+        }
+    }
+
+    int *collectedIds = (int*) malloc( collidedCount * sizeof( int ) );
+    int t = 0;
+
+    for ( int i = 0; i < player->bulletQuantity; i++ ) {
+        if ( player->bullets[i].collided ) {
+            collectedIds[t++] = player->bullets[i].id;
+        }
+    }
+
+
+    for ( int i = 0; i < collidedCount; i++ ) {
+        for ( int j = player->bulletQuantity-1; j >= 0; j-- ) {
+            if ( player->bullets[j].id == collectedIds[i] ) {
+                for ( int k = j+1; k < player->bulletQuantity; k++ ) {
+                    player->bullets[k-1] = player->bullets[k];
+                }
+                (player->bulletQuantity)--;
+                break;
+            }
+        }
+    }
+
+    free( collectedIds );
 
 }

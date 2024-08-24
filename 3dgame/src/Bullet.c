@@ -12,19 +12,20 @@
 Bullet createBullet() {
 
     Bullet bullet = {
+        .id = bulletCount++,
         .pos = {
             .x = 0.0f,
             .y = 1.0f,
             .z = 0.0f
         },
-        .radius = 0.3f,
+        .radius = 0.2f,
         .vel = {
             .x = 0.0f,
             .y = 0.0f,
             .z = 0.0f
         },
-        .speed = 180.0f,
-        .color = Fade( BLACK, 0.8f ),
+        .speed = 150.0f,
+        .color = BLACK,
         .horizontalAngle = 0.0f,
         .verticalAngle = 0.0f,
         .collided = false
@@ -35,20 +36,14 @@ Bullet createBullet() {
 }
 
 void drawBullet( Bullet *bullet ) {
-    if ( !bullet->collided ) {
-        DrawSphere( bullet->pos, bullet->radius, bullet->color );
-    }
+    DrawSphere( bullet->pos, bullet->radius, bullet->color );
 }
 
 void updateBullet( Bullet *bullet, float delta ) {
-
-    if ( !bullet->collided ) {
-        bullet->pos.x += bullet->vel.x * delta;
-        bullet->pos.y += bullet->vel.y * delta;
-        bullet->pos.z += bullet->vel.z * delta;
-        bullet->vel.y -= GRAVITY * delta;
-    }
-
+    bullet->pos.x += bullet->vel.x * delta;
+    bullet->pos.y += bullet->vel.y * delta;
+    bullet->pos.z += bullet->vel.z * delta;
+    bullet->vel.y -= GRAVITY * delta;
 }
 
 BoundingBox getBulletBoundingBox( Bullet *bullet ) {

@@ -8,11 +8,14 @@
 
 /**
  * TODO:
- *   - Detectar colisão apenas de objetos que estão perto do jogador;
+ *   - Vida do jogador;
+ *   - Vida dos inimigos;
+ *   - Itens (cura e munição).
+ *   - Ajustar movimentação com o mouse e teclas.
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
  *     deve ser posicionada atrás baseada em um ângulo e mirar em 180 do centro
  *     do personagem (insight apenas);
- *   - Ajustar movimentação com o mouse e teclas.
+ *   - Detectar colisão apenas de objetos que estão perto do jogador;
  */
 
 #include <stdio.h>
@@ -36,7 +39,10 @@ const float GRAVITY = 50.0f;
 const int CAMERA_TYPE_QUANTITY = 4;
 const bool CREATE_OBSTACLES = true;
 
-bool showInfo = false;
+int bulletCount = 0;
+int enemyCount = 0;
+
+bool showInfo = true;
 bool drawWalls = true;
 
 float xCam = 0.0f;
@@ -134,12 +140,13 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
         }
         updateEnemy( enemy, delta );
         updateEnemyCollisionProbes( enemy );
+        resolveCollisionEnemyObstacles( enemy, gw );
         resolveCollisionEnemyGround( enemy, ground );
         resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
         resolveCollisionPlayerEnemy( player, enemy );
     }
 
-    resolveCollisionBulletWorld( player->bullets, player->bulletQuantity, gw );
+    resolveCollisionBulletWorld( gw );
 
     updateCameraTarget( gw, &gw->player );
     updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
@@ -183,7 +190,10 @@ void drawGameWorld( GameWorld *gw ) {
     // debug info
     if ( showInfo ) {
         DrawFPS( 10, 10 );
-        showCameraInfo( &gw->camera, 10, 30 );
+        DrawText( TextFormat( "player: x=%.1f, y=%.1f, z=%.1f", gw->player.pos.x, gw->player.pos.y, gw->player.pos.z ), 10, 30, 20, BLACK );
+        DrawText( TextFormat( "bullets: %d", gw->player.bulletQuantity ), 10, 50, 20, BLACK );
+        DrawText( TextFormat( "enemies: %d", gw->enemyQuantity ), 10, 70, 20, BLACK );
+        showCameraInfo( &gw->camera, 10, 90 );
     }
 
     EndDrawing();
@@ -276,7 +286,7 @@ void updateCameraPosition( GameWorld *gw, Player *player, float xOffset, float y
 void showCameraInfo( Camera3D *camera, int x, int y ) {
 
     const char *pos = TextFormat( 
-        "pos: x=%.2f, y=%.2f, z=%.2f",
+        "camera: x=%.2f, y=%.2f, z=%.2f",
         camera->position.x,
         camera->position.y,
         camera->position.z
@@ -533,7 +543,6 @@ void processOptionsInput( Player *player, GameWorld *gw ) {
         player->pos = (Vector3){ 0.0, 1.0, 0.0 };
         player->rotationHorizontalAngle = 0.0f;
         updatePlayerCollisionProbes( player );
-        //gw->cameraType = CAMERA_TYPE_THIRD_PERSON_FIXED;
         for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
             gw->obstacles[i].touchColor = gw->obstacles[i].color;
         }
@@ -718,6 +727,41 @@ void resolveCollisionPlayerObstacles( Player *player, GameWorld *gw ) {
     
 }
 
+void resolveCollisionEnemyObstacles( Enemy *enemy, GameWorld *gw ) {
+
+    for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
+        Block *obs = &gw->obstacles[i];
+        EnemyCollisionType coll = checkCollisionEnemyBlock( enemy, obs, true );
+        switch ( coll ) {
+            case ENEMY_COLLISION_LEFT:
+                enemy->pos.x = obs->pos.x + obs->dim.x / 2 + enemy->dim.x / 2;
+                break;
+            case ENEMY_COLLISION_RIGHT:
+                enemy->pos.x = obs->pos.x - obs->dim.x / 2 - enemy->dim.x / 2;
+                break;
+            case ENEMY_COLLISION_BOTTOM:
+                enemy->pos.y = obs->pos.y + obs->dim.y / 2 + enemy->dim.y / 2;
+                enemy->vel.y = 0.0f;
+                break;
+            case ENEMY_COLLISION_TOP:
+                enemy->pos.y = obs->pos.y - obs->dim.y / 2 - enemy->dim.y / 2 - 0.05f;
+                enemy->vel.y = 0.0f;
+                break;
+            case ENEMY_COLLISION_FAR:
+                enemy->pos.z = obs->pos.z + obs->dim.z / 2 + enemy->dim.z / 2;
+                break;
+            case ENEMY_COLLISION_NEAR:
+                enemy->pos.z = obs->pos.z - obs->dim.z / 2 - enemy->dim.z / 2;
+                break;
+            case ENEMY_COLLISION_ALL:
+            case ENEMY_COLLISION_NONE:
+            default:
+                break;
+        }
+    }
+    
+}
+
 void resolveCollisionPlayerGround( Player *player, Block *ground ) {
     if ( checkCollisionPlayerBlock( player, ground, false ) == PLAYER_COLLISION_ALL ) {
         player->pos.y = ground->pos.y + ground->dim.y / 2 + player->dim.y / 2;
@@ -823,51 +867,95 @@ void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy ) {
     
 }
 
-void resolveCollisionBulletWorld( Bullet *bullets, int bulletQuantity, GameWorld *gw ) {
+void resolveCollisionBulletWorld( GameWorld *gw ) {
 
     Block *ground = &gw->ground;
+    Bullet *bullets = gw->player.bullets;
 
-    for ( int i = 0; i < bulletQuantity; i++ ) {
+    for ( int i = 0; i < gw->player.bulletQuantity; i++ ) {
 
         Bullet *bullet = &bullets[i];
 
+        // scenario
+        if ( checkCollisionBulletBlock( bullet, ground ) || 
+                checkCollisionBulletBlock( bullet, &gw->leftWall ) ||
+                checkCollisionBulletBlock( bullet, &gw->rightWall ) ||
+                checkCollisionBulletBlock( bullet, &gw->farWall ) ||
+                checkCollisionBulletBlock( bullet, &gw->nearWall ) ) {
+            bullet->collided = true;
+        } else {
+            for ( int j = 0; j < gw->obstacleQuantity; j++ ) {
+                if ( checkCollisionBulletBlock( bullet, &gw->obstacles[j] ) ) {
+                    bullet->collided = true;
+                    break;
+                }
+            }
+        }
+
+        // enemies
         if ( !bullet->collided ) {
+            for ( int j = 0; j < gw->enemyQuantity; j++ ) {
+                if ( gw->enemies[j].state == ENEMY_STATE_ALIVE && 
+                        checkCollisionBulletEnemy( bullet, &gw->enemies[j] ) ) {
+                    bullet->collided = true;
+                    gw->enemies[j].state = ENEMY_STATE_DEAD;
+                    cleanDeadEnemies( gw );
+                    break;
+                }
+            }
+        }
 
-            // scenario
-            if ( checkCollisionBulletBlock( bullet, ground ) || 
-                 checkCollisionBulletBlock( bullet, &gw->leftWall ) ||
-                 checkCollisionBulletBlock( bullet, &gw->rightWall ) ||
-                 checkCollisionBulletBlock( bullet, &gw->farWall ) ||
-                 checkCollisionBulletBlock( bullet, &gw->nearWall ) ) {
+        // out of bounds
+        if ( !bullet->collided ) {
+            if ( sqrt( bullet->pos.x * bullet->pos.x +
+                        bullet->pos.y * bullet->pos.y +
+                        bullet->pos.z * bullet->pos.z ) > gw->ground.dim.x * 2 ) {
                 bullet->collided = true;
-            } else {
-                for ( int j = 0; j < gw->obstacleQuantity; j++ ) {
-                    if ( checkCollisionBulletBlock( bullet, &gw->obstacles[j] ) ) {
-                        bullet->collided = true;
-                        break;
-                    }
-                }
             }
+        }
 
-            // enemies
-            if ( !bullet->collided ) {
-                for ( int j = 0; j < gw->enemyQuantity; j++ ) {
-                    if ( gw->enemies[j].state == ENEMY_STATE_ALIVE && 
-                         checkCollisionBulletEnemy( bullet, &gw->enemies[j] ) ) {
-                        bullet->collided = true;
-                        gw->enemies[j].state = ENEMY_STATE_DEAD;
-                        // TODO: remove enemy from game world (take care of the model -> one model per enemy!)
-                        break;
-                    }
-                }
-            }
-
-            if ( bullet->collided ) {
-                // TODO: remove bullet from game world
-            }
-
+        if ( bullet->collided ) {
+            cleanCollidedBullets( &gw->player );
         }
 
     }
+
+}
+
+void cleanDeadEnemies( GameWorld *gw ) {
+
+    // naive algorithm
+    int collidedCount = 0;
+    Enemy *enemies = gw->enemies;
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        if ( enemies[i].state == ENEMY_STATE_DEAD ) {
+            collidedCount++;
+        }
+    }
+
+    int *collectedIds = (int*) malloc( collidedCount * sizeof( int ) );
+    int t = 0;
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        if ( enemies[i].state == ENEMY_STATE_DEAD ) {
+            collectedIds[t++] = enemies[i].id;
+        }
+    }
+
+
+    for ( int i = 0; i < collidedCount; i++ ) {
+        for ( int j = gw->enemyQuantity-1; j >= 0; j-- ) {
+            if ( enemies[j].id == collectedIds[i] ) {
+                for ( int k = j+1; k < gw->enemyQuantity; k++ ) {
+                    enemies[k-1] = enemies[k];
+                }
+                (gw->enemyQuantity)--;
+                break;
+            }
+        }
+    }
+
+    free( collectedIds );
 
 }

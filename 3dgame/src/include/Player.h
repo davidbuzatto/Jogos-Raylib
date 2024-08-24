@@ -17,3 +17,4 @@ void createPlayerModel( Player *player );
 void destroyPlayerModel( Player *player );
 
 void playerShotBullet( Player *player );
+void cleanCollidedBullets( Player *player );

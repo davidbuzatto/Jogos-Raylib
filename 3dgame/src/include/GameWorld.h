@@ -54,10 +54,12 @@ void processCameraInput( float *xCam, float *yCam, float *zCam );
 void processPlayerInput( Player *player, CameraType cameraType, float delta, bool keyboard );
 
 void resolveCollisionPlayerObstacles( Player *player, GameWorld *gw );
+void resolveCollisionEnemyObstacles( Enemy *enemy, GameWorld *gw );
 void resolveCollisionPlayerGround( Player *player, Block *ground );
 void resolveCollisionEnemyGround( Enemy *enemy, Block *ground );
 void resolveCollisionPlayerWalls( Player *player, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall );
 void resolveCollisionEnemyWalls( Enemy *enemy, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall );
 void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy );
-void resolveCollisionBulletWorld( Bullet *bullets, int bulletQuantity, GameWorld *gw );
+void resolveCollisionBulletWorld( GameWorld *gw );
 
+void cleanDeadEnemies( GameWorld *gw );

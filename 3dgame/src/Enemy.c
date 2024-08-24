@@ -14,6 +14,7 @@ Enemy createEnemy( Vector3 pos, Color color ) {
     float enemyThickness = 2.0f;
 
     Enemy enemy = {
+        .id = enemyCount++,
         .pos = pos,
         .lastPos = {
             .x = 0.0f,
@@ -78,50 +79,42 @@ Enemy createEnemy( Vector3 pos, Color color ) {
 }
 
 void drawEnemy( Enemy *enemy ) {
-    
-    if ( enemy->state == ENEMY_STATE_ALIVE ) {
 
-        if ( enemy->showCollisionProbes ) {
-            drawBlock( &enemy->cpLeft );
-            drawBlock( &enemy->cpRight );
-            drawBlock( &enemy->cpBottom );
-            drawBlock( &enemy->cpTop );
-            drawBlock( &enemy->cpFar );
-            drawBlock( &enemy->cpNear );
-        }
-
-        if ( !enemy->showWiresOnly ) {
-            DrawModelEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, enemy->color );
-        }
-
-        DrawModelWiresEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, BLACK );
-
+    if ( enemy->showCollisionProbes ) {
+        drawBlock( &enemy->cpLeft );
+        drawBlock( &enemy->cpRight );
+        drawBlock( &enemy->cpBottom );
+        drawBlock( &enemy->cpTop );
+        drawBlock( &enemy->cpFar );
+        drawBlock( &enemy->cpNear );
     }
+
+    if ( !enemy->showWiresOnly ) {
+        DrawModelEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, enemy->color );
+    }
+
+    DrawModelWiresEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, BLACK );
 
 }
 
 void updateEnemy( Enemy *enemy, float delta ) {
 
-    if ( enemy->state == ENEMY_STATE_ALIVE ) {
+    enemy->lastPos = enemy->pos;
 
-        enemy->lastPos = enemy->pos;
+    enemy->pos.x += enemy->vel.x * delta;
+    enemy->pos.y += enemy->vel.y * delta;
+    enemy->pos.z += enemy->vel.z * delta;
 
-        enemy->pos.x += enemy->vel.x * delta;
-        enemy->pos.y += enemy->vel.y * delta;
-        enemy->pos.z += enemy->vel.z * delta;
+    enemy->vel.y -= GRAVITY * delta;
 
-        enemy->vel.y -= GRAVITY * delta;
+    enemy->rotationHorizontalAngle += enemy->rotationVel * delta;
 
-        enemy->rotationHorizontalAngle += enemy->rotationVel * delta;
-
-        if ( enemy->pos.y < enemy->lastPos.y ) {
-            enemy->positionState = ENEMY_POSITION_STATE_FALLING;
-        } else if ( enemy->pos.y > enemy->lastPos.y ) {
-            enemy->positionState = ENEMY_POSITION_STATE_JUMPING;
-        } else {
-            enemy->positionState = ENEMY_POSITION_STATE_ON_GROUND;
-        }
-
+    if ( enemy->pos.y < enemy->lastPos.y ) {
+        enemy->positionState = ENEMY_POSITION_STATE_FALLING;
+    } else if ( enemy->pos.y > enemy->lastPos.y ) {
+        enemy->positionState = ENEMY_POSITION_STATE_JUMPING;
+    } else {
+        enemy->positionState = ENEMY_POSITION_STATE_ON_GROUND;
     }
 
 }
@@ -242,7 +235,7 @@ void destroyEnemyModel( Enemy *enemy ) {
 
 void createEnemies( GameWorld *gw, Color enemyColor ) {
 
-    gw->enemyQuantity = 18;
+    gw->enemyQuantity = 26;
     gw->enemies = (Enemy*) malloc( sizeof( Enemy ) * gw->enemyQuantity );
 
     Vector3 positions[] = {
@@ -270,6 +263,17 @@ void createEnemies( GameWorld *gw, Color enemyColor ) {
         { -16, 1, -8 },
         { -16, 1, -2 },
         { -16, 1, 4 },
+
+        { -10, 7, 2 },
+        { -10, 7, -4 },
+
+        { 14, 7, -2 },
+        { 20, 7, 0 },
+
+        { 32, 3, 2 },
+        { 36, 5, 2 },
+        { 36, 7, -2 },
+        { 40, 9, -4 },
 
     };
 
