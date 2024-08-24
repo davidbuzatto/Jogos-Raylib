@@ -10,6 +10,7 @@
 #include "Enemy.h"
 #include "Player.h"
 #include "raylib.h"
+#include "utils.h"
 
 Player createPlayer() {
 
@@ -74,7 +75,11 @@ Player createPlayer() {
         .cpDimBT = { playerThickness - cpDiff, cpThickness, playerThickness - cpDiff },
         .cpDimFN = { playerThickness - cpDiff, playerThickness - cpDiff, cpThickness },
 
-        .positionState = PLAYER_POSITION_STATE_ON_GROUND
+        .positionState = PLAYER_POSITION_STATE_ON_GROUND,
+        
+        .maxHp = 100,
+        .currentHp = 100,
+        .currentAmmo = 200
 
     };
 
@@ -118,6 +123,21 @@ void drawPlayer( Player *player ) {
     for ( int i = 0; i < player->bulletQuantity; i++ ) {
         drawBullet( &player->bullets[i] );
     }
+
+}
+
+void drawPlayerHud( Player *player ) {
+
+    int h = GetScreenHeight();
+    int xMargin = 10;
+    int yMargin = 10;
+    double t = (float) player->currentHp / player->maxHp;
+
+    DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolateColor( RED, LIME, t ) );
+    DrawRectangleLines( xMargin, h - yMargin - 47, 140, 20, BLACK );
+
+    DrawText( TextFormat( "Ammo: %d", player->currentAmmo ), xMargin, h - yMargin - 20, 20, player->currentAmmo > 0 ? BLACK : MAROON );
+
 
 }
 
@@ -305,9 +325,10 @@ void playerShotBullet( Player *player ) {
 
         player->timeToNextShotCounter = 0.0f;
 
-        if ( player->bulletQuantity < player->maxBullets ) {
+        if ( player->bulletQuantity < player->maxBullets && player->currentAmmo > 0 ) {
 
             int q = player->bulletQuantity;
+            player->currentAmmo--;
 
             player->bullets[q] = createBullet();
             Bullet *b = &player->bullets[q];

@@ -139,6 +139,10 @@ typedef struct Player {
 
     PlayerPositionState positionState;
 
+    int maxHp;
+    int currentHp;
+    int currentAmmo;
+
 } Player;
 
 extern int enemyCount;
@@ -188,6 +192,8 @@ typedef struct Enemy {
     bool showHpBar;
     float timeShowingHpBar;
     float hpBarShowCounter;
+
+    int damageOnContact;
 
 } Enemy;
 

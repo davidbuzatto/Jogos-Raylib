@@ -7,5 +7,6 @@
  */
 #pragma once
 
-double toRadians( double degrees );
-double toDegrees( double radians );
+#include "raylib.h"
+
+Color interpolateColor( Color c1, Color c2, float t );

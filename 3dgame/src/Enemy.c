@@ -62,7 +62,8 @@ Enemy createEnemy( Vector3 pos, Color color ) {
         .currentHp = 5,
         .showHpBar = false,
         .timeShowingHpBar = 4.0f,
-        .hpBarShowCounter = 0.0f
+        .hpBarShowCounter = 0.0f,
+        .damageOnContact = 1
 
     };
 
@@ -107,14 +108,14 @@ void drawEnemyHpBar( Enemy *enemy, Camera3D camera ) {
 
     if ( enemy->showHpBar && enemy->state == ENEMY_STATE_ALIVE ) {
 
-        int barWidth = 120;
+        float barWidth = 120.0f;
         int barHeight = 10;
 
         Vector3 p = enemy->pos;
         p.y += enemy->dim.y - 0.5f;
 
         Vector2 v = GetWorldToScreen( p, camera );
-        DrawRectangle( v.x - barWidth / 2, v.y - barHeight / 2, barWidth * ( (float) enemy->currentHp / enemy->maxHp ), barHeight, RED );
+        DrawRectangle( v.x - barWidth / 2, v.y - barHeight / 2, (int) (barWidth * enemy->currentHp / enemy->maxHp), barHeight, RED );
         DrawRectangleLines( v.x - barWidth / 2, v.y - barHeight / 2, barWidth, barHeight, BLACK );
 
     }

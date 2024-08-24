@@ -9,7 +9,9 @@
 /**
  * TODO:
  *   - Desenhar apenas as barras de vida dos inimigos que estão visíveis;
- *   - Vida do jogador;
+ *   - HUD jogador:
+ *       - vida;
+ *       - munição;
  *   - Itens (cura e munição).
  *   - Ajustar movimentação com o mouse e teclas.
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
@@ -189,14 +191,15 @@ void drawGameWorld( GameWorld *gw ) {
         drawEnemyHpBar( &gw->enemies[i], gw->camera );
     }
 
+    drawPlayerHud( &gw->player );
     drawReticle( gw->cameraType, gw->player.weaponState, 30 );
 
     // debug info
     if ( showInfo ) {
         DrawFPS( 10, 10 );
         DrawText( TextFormat( "player: x=%.1f, y=%.1f, z=%.1f", gw->player.pos.x, gw->player.pos.y, gw->player.pos.z ), 10, 30, 20, BLACK );
-        DrawText( TextFormat( "bullets: %d", gw->player.bulletQuantity ), 10, 50, 20, BLACK );
-        DrawText( TextFormat( "enemies: %d", gw->enemyQuantity ), 10, 70, 20, BLACK );
+        DrawText( TextFormat( "active bullets: %d", gw->player.bulletQuantity ), 10, 50, 20, BLACK );
+        DrawText( TextFormat( "active enemies: %d", gw->enemyQuantity ), 10, 70, 20, BLACK );
         showCameraInfo( &gw->camera, 10, 90 );
     }
 
@@ -839,6 +842,10 @@ void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy ) {
     if ( enemy->state == ENEMY_STATE_ALIVE ) {
 
         PlayerCollisionType coll = checkCollisionPlayerEnemy( player, enemy, true );
+
+        if ( coll != PLAYER_COLLISION_ALL && coll != PLAYER_COLLISION_NONE ) {
+            player->currentHp -= enemy->damageOnContact;
+        }
 
         switch ( coll ) {
             case PLAYER_COLLISION_LEFT:

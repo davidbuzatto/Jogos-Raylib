@@ -5,17 +5,14 @@
  * 
  * @copyright Copyright (c) 2024
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
 #include "raylib.h"
 #include "utils.h"
 
-double toRadians( double degrees ) {
-    return degrees * PI / 180.0;
-}
-
-double toDegrees( double radians ) {
-    return radians * 180.0 / PI;
+Color interpolateColor( Color c1, Color c2, float t ) {
+    return (Color){
+        .r = (int) ( c1.r + ( c2.r - c1.r ) * t ),
+        .g = (int) ( c1.g + ( c2.g - c1.g ) * t ),
+        .b = (int) ( c1.b + ( c2.b - c1.b ) * t ),
+        .a = 255
+    };
 }

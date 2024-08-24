@@ -7,6 +7,7 @@
 
 Player createPlayer();
 void drawPlayer( Player *player );
+void drawPlayerHud( Player *player );
 void updatePlayer( Player *player, float delta );
 void updatePlayerCollisionProbes( Player *player );
 void jumpPlayer( Player *player );
