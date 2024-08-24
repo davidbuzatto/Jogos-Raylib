@@ -9,10 +9,8 @@
 /**
  * TODO:
  *   - Desenhar apenas as barras de vida dos inimigos que estão visíveis;
- *   - HUD jogador:
- *       - vida;
- *       - munição;
  *   - Itens (cura e munição).
+ *   - Reiniciar ao morrer;
  *   - Ajustar movimentação com o mouse e teclas.
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
  *     deve ser posicionada atrás baseada em um ângulo e mirar em 180 do centro

@@ -9,4 +9,5 @@
 
 #include "raylib.h"
 
-Color interpolateColor( Color c1, Color c2, float t );
+Color interpolate2Color( Color c1, Color c2, float t );
+Color interpolate3Color( Color c1, Color c2, Color c3, float t );

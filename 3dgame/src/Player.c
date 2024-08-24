@@ -76,7 +76,7 @@ Player createPlayer() {
         .cpDimFN = { playerThickness - cpDiff, playerThickness - cpDiff, cpThickness },
 
         .positionState = PLAYER_POSITION_STATE_ON_GROUND,
-        
+
         .maxHp = 100,
         .currentHp = 100,
         .currentAmmo = 200
@@ -133,7 +133,8 @@ void drawPlayerHud( Player *player ) {
     int yMargin = 10;
     double t = (float) player->currentHp / player->maxHp;
 
-    DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolateColor( RED, LIME, t ) );
+    //DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolate2Color( RED, LIME, t ) );
+    DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolate3Color( RED, ORANGE, LIME, t ) );
     DrawRectangleLines( xMargin, h - yMargin - 47, 140, 20, BLACK );
 
     DrawText( TextFormat( "Ammo: %d", player->currentAmmo ), xMargin, h - yMargin - 20, 20, player->currentAmmo > 0 ? BLACK : MAROON );
