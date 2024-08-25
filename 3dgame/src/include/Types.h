@@ -49,10 +49,36 @@ typedef enum PlayerPositionState {
     PLAYER_POSITION_STATE_FALLING
 } PlayerPositionState;
 
+typedef enum PlayerState {
+    PLAYER_STATE_ALIVE,
+    PLAYER_STATE_DEAD
+} PlayerState;
+
 typedef enum PlayerWeaponState {
     PLAYER_WEAPON_STATE_IDLE,
     PLAYER_WEAPON_STATE_READY
 } PlayerWeaponState;
+
+typedef enum PowerUpType {
+    POWER_UP_TYPE_HP,
+    POWER_UP_TYPE_AMMO
+} PowerUpType;
+
+typedef enum PowerUpCollisionType {
+    POWER_UP_COLLISION_ALL,
+    POWER_UP_COLLISION_NONE
+} PowerUpCollisionType;
+
+typedef enum PowerUpPositionState {
+    POWER_UP_POSITION_STATE_ON_GROUND,
+    POWER_UP_POSITION_STATE_JUMPING,
+    POWER_UP_POSITION_STATE_FALLING
+} PowerUpPositionState;
+
+typedef enum PowerUpState {
+    POWER_UP_STATE_ACTIVE,
+    POWER_UP_STATE_CONSUMED
+} PowerUpState;
 
 typedef struct Block {
 
@@ -69,6 +95,38 @@ typedef struct Block {
     bool renderTouchColor;
 
 } Block;
+
+extern int powerUpCount;
+
+typedef struct PowerUp {
+
+    int id;
+    
+    Vector3 pos;
+    Vector3 lastPos;
+    float radius;
+    Vector3 vel;
+
+    float jumpSpeed;
+
+    Color hpColor;
+    Color ammoColor;
+    
+    bool showWiresOnly;
+
+    Mesh mesh;
+    Model model;
+    Vector3 rotationAxis;
+    float rotationHorizontalAngle;
+    float rotationVel;
+    float rotationSpeed;
+    Vector3 scale;
+
+    PowerUpType type;
+    PowerUpState state;
+    PowerUpPositionState positionState;
+
+} PowerUp;
 
 extern int bulletCount;
 
@@ -143,6 +201,8 @@ typedef struct Player {
     int currentHp;
     int currentAmmo;
 
+    PlayerState state;
+
 } Player;
 
 extern int enemyCount;
@@ -208,6 +268,9 @@ typedef struct GameWorld {
 
     Enemy *enemies;
     int enemyQuantity;
+
+    PowerUp *powerUps;
+    int powerUpQuantity;
     
     Block ground;
 

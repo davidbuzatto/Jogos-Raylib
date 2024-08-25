@@ -7,6 +7,7 @@
 #include "GameWorld.h"
 #include "Block.h"
 #include "Bullet.h"
+#include "PowerUp.h"
 #include "Enemy.h"
 #include "Player.h"
 #include "raylib.h"
@@ -79,7 +80,8 @@ Player createPlayer() {
 
         .maxHp = 100,
         .currentHp = 100,
-        .currentAmmo = 200
+        .currentAmmo = 200,
+        .state = PLAYER_STATE_ALIVE
 
     };
 
@@ -283,6 +285,19 @@ PlayerCollisionType checkCollisionPlayerEnemy( Player *player, Enemy *enemy, boo
 
 }
 
+PlayerCollisionType checkCollisionPlayerPowerUp( Player *player, PowerUp *powerUp ) {
+
+    BoundingBox playerBB = getPlayerBoundingBox( player );
+    BoundingBox powerUpBB = getPowerUpBoundingBox( powerUp );
+
+    if ( CheckCollisionBoxes( playerBB, powerUpBB ) ) {
+        return PLAYER_COLLISION_ALL;
+    }
+
+    return PLAYER_COLLISION_NONE;
+
+}
+
 BoundingBox getPlayerBoundingBox( Player *player ) {
     return (BoundingBox) {
         .min = {
@@ -381,5 +396,37 @@ void cleanCollidedBullets( Player *player ) {
     }
 
     free( collectedIds );
+
+}
+
+void playerAcquirePowerUp( Player *player, PowerUp *powerUp ) {
+    
+    if ( powerUp->state == POWER_UP_STATE_ACTIVE ) {
+
+        switch ( powerUp->type ) {
+
+            case POWER_UP_TYPE_HP:
+
+                if ( player->currentHp != player->maxHp ) {
+                    player->currentHp += 20;
+                    if ( player->currentHp > player->maxHp ) {
+                        player->currentHp = player->maxHp;
+                    }
+                    powerUp->state = POWER_UP_STATE_CONSUMED;
+                }
+
+                break;
+
+            case POWER_UP_TYPE_AMMO:
+                player->currentAmmo += 50;
+                powerUp->state = POWER_UP_STATE_CONSUMED;
+                break;
+
+            default:
+                break;
+
+        }
+
+    }
 
 }

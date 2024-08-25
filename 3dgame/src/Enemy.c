@@ -323,27 +323,27 @@ void createEnemies( GameWorld *gw, Color enemyColor ) {
 
 void createEnemiesModel( Enemy *enemies, int enemyQuantity ) {
 
-    Enemy *baseObstacle = &enemies[0];
+    Enemy *baseEnemy = &enemies[0];
 
     Image img = GenImageChecked( 2, 2, 1, 1, WHITE, LIGHTGRAY );
     Texture2D texture = LoadTextureFromImage( img );
     UnloadImage( img );
 
-    baseObstacle->mesh = GenMeshCube( baseObstacle->dim.x, baseObstacle->dim.y, baseObstacle->dim.z );
-    baseObstacle->model = LoadModelFromMesh( baseObstacle->mesh );
-    baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+    baseEnemy->mesh = GenMeshCube( baseEnemy->dim.x, baseEnemy->dim.y, baseEnemy->dim.z );
+    baseEnemy->model = LoadModelFromMesh( baseEnemy->mesh );
+    baseEnemy->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
 
     for ( int i = 1; i < enemyQuantity; i++ ) {
-        enemies[i].mesh = baseObstacle->mesh;
-        enemies[i].model = baseObstacle->model;
+        enemies[i].mesh = baseEnemy->mesh;
+        enemies[i].model = baseEnemy->model;
     }
 
 }
 
 void destroyEnemiesModel( Enemy *enemies, int enemyQuantity ) {
-    Enemy *baseObstacle = &enemies[0];
-    UnloadTexture( baseObstacle->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
-    UnloadModel( baseObstacle->model );
+    Enemy *baseEnemy = &enemies[0];
+    UnloadTexture( baseEnemy->model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture );
+    UnloadModel( baseEnemy->model );
 }
 
 void setEnemyDetectedByPlayer( Enemy *enemy, Player *player, bool showLines ) {
@@ -392,5 +392,42 @@ void setEnemyDetectedByPlayer( Enemy *enemy, Player *player, bool showLines ) {
     };
 
     enemy->detectedByPlayer = CheckCollisionPointTriangle( pEnemy, ptri1, ptri2, ptri3 );
+
+}
+
+void cleanDeadEnemies( GameWorld *gw ) {
+
+    // naive algorithm
+    int deadCount = 0;
+    Enemy *enemies = gw->enemies;
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        if ( enemies[i].state == ENEMY_STATE_DEAD ) {
+            deadCount++;
+        }
+    }
+
+    int *collectedIds = (int*) malloc( deadCount * sizeof( int ) );
+    int t = 0;
+
+    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+        if ( enemies[i].state == ENEMY_STATE_DEAD ) {
+            collectedIds[t++] = enemies[i].id;
+        }
+    }
+
+    for ( int i = 0; i < deadCount; i++ ) {
+        for ( int j = gw->enemyQuantity-1; j >= 0; j-- ) {
+            if ( enemies[j].id == collectedIds[i] ) {
+                for ( int k = j+1; k < gw->enemyQuantity; k++ ) {
+                    enemies[k-1] = enemies[k];
+                }
+                (gw->enemyQuantity)--;
+                break;
+            }
+        }
+    }
+
+    free( collectedIds );
 
 }

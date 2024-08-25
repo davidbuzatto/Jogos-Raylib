@@ -7,9 +7,7 @@
  */
 
 /**
- * TODO:
- *   - Itens (cura e munição).
- *   - Reiniciar ao morrer;
+ * TODO: 
  *   - Ajustar movimentação com o mouse e teclas.
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
  *     deve ser posicionada atrás baseada em um ângulo e mirar em 180 do centro
@@ -23,6 +21,7 @@
 
 #include "Types.h"
 #include "GameWorld.h"
+#include "PowerUp.h"
 #include "Player.h"
 #include "Enemy.h"
 #include "Bullet.h"
@@ -37,9 +36,11 @@
 const float GRAVITY = 50.0f;
 const int CAMERA_TYPE_QUANTITY = 4;
 const bool CREATE_OBSTACLES = true;
+const int gamepadId = 0;
 
 int bulletCount = 0;
 int enemyCount = 0;
+int powerUpCount = 0;
 
 bool showInfo = true;
 bool drawWalls = true;
@@ -72,6 +73,7 @@ GameWorld* createGameWorld( void ) {
 
     gw->player = createPlayer();
     createEnemies( gw, enemyColor );
+    createPowerUps( gw );
 
     gw->ground = createGround( blockSize, lines, columns );
     createWalls( gw, wallColor );
@@ -98,6 +100,8 @@ void destroyGameWorld( GameWorld *gw ) {
     destroyPlayerModel( &gw->player );
     destroyEnemiesModel( gw->enemies, gw->enemyQuantity );
     free( gw->enemies );
+    destroyPowerUpsModel( gw->powerUps, gw->powerUpQuantity );
+    free( gw->powerUps );
     destroyGroundModel( &gw->ground );
     destroyObstaclesModel( gw->obstacles, gw->obstacleQuantity );
     free( gw->obstacles );
@@ -110,46 +114,60 @@ void destroyGameWorld( GameWorld *gw ) {
 void inputAndUpdateGameWorld( GameWorld *gw ) {
 
     float delta = GetFrameTime();
-
     Player *player = &gw->player;
-    Block *ground = &gw->ground;
-    Block *leftWall = &gw->leftWall;
-    Block *rightWall = &gw->rightWall;
-    Block *farWall = &gw->farWall;
-    Block *nearWall = &gw->nearWall;
 
     processOptionsInput( player, gw );
-    processCameraInput( &xCam, &yCam, &zCam );
-    processPlayerInput( player, gw->cameraType, delta, false );
-
-    updatePlayer( player, delta );
-    updatePlayerCollisionProbes( player );
     
-    resolveCollisionPlayerObstacles( player, gw );
-    updatePlayerCollisionProbes( player );
-    resolveCollisionPlayerGround( player, ground );
-    resolveCollisionPlayerWalls( player, leftWall, rightWall, farWall, nearWall );
+    if ( player->state == PLAYER_STATE_ALIVE ) {
 
-    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
-        Enemy *enemy = &gw->enemies[i];
-        if ( enemy->positionState == ENEMY_POSITION_STATE_ON_GROUND ) {
-            if ( GetRandomValue( 0, 100 ) == 0 ) {
-                jumpEnemy( enemy );
-            }
+        Player *player = &gw->player;
+        Block *ground = &gw->ground;
+        Block *leftWall = &gw->leftWall;
+        Block *rightWall = &gw->rightWall;
+        Block *farWall = &gw->farWall;
+        Block *nearWall = &gw->nearWall;
+
+        processCameraInput( &xCam, &yCam, &zCam );
+        processPlayerInput( player, gw->cameraType, delta, false );
+
+        updatePlayer( player, delta );
+        updatePlayerCollisionProbes( player );
+        
+        resolveCollisionPlayerObstacles( player, gw );
+        updatePlayerCollisionProbes( player );
+        resolveCollisionPlayerGround( player, ground );
+        resolveCollisionPlayerWalls( player, leftWall, rightWall, farWall, nearWall );
+
+        for ( int i = 0; i < gw->powerUpQuantity; i++ ) {
+            PowerUp *powerUp = &gw->powerUps[i];
+            updatePowerUp( powerUp, delta );
+            resolveCollisionPlayerPowerUp( player, powerUp );
+            resolveCollisionPowerUpGround( powerUp, ground );
         }
-        updateEnemy( enemy, delta );
-        updateEnemyCollisionProbes( enemy );
-        resolveCollisionEnemyObstacles( enemy, gw );
-        resolveCollisionEnemyGround( enemy, ground );
-        resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
-        resolveCollisionPlayerEnemy( player, enemy );
-        setEnemyDetectedByPlayer( enemy, &gw->player, true );
+        cleanConsumedPowerUps( gw );
+
+        for ( int i = 0; i < gw->enemyQuantity; i++ ) {
+            Enemy *enemy = &gw->enemies[i];
+            if ( enemy->positionState == ENEMY_POSITION_STATE_ON_GROUND ) {
+                if ( GetRandomValue( 0, 100 ) == 0 ) {
+                    jumpEnemy( enemy );
+                }
+            }
+            updateEnemy( enemy, delta );
+            updateEnemyCollisionProbes( enemy );
+            resolveCollisionEnemyObstacles( enemy, gw );
+            resolveCollisionEnemyGround( enemy, ground );
+            resolveCollisionEnemyWalls( enemy, leftWall, rightWall, farWall, nearWall );
+            resolveCollisionPlayerEnemy( player, enemy );
+            setEnemyDetectedByPlayer( enemy, &gw->player, true );
+        }
+
+        resolveCollisionBulletWorld( gw );
+
+        updateCameraTarget( gw, &gw->player );
+        updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
+
     }
-
-    resolveCollisionBulletWorld( gw );
-
-    updateCameraTarget( gw, &gw->player );
-    updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
 
 }
 
@@ -170,6 +188,10 @@ void drawGameWorld( GameWorld *gw ) {
     
     for ( int i = 0; i < gw->enemyQuantity; i++ ) {
         drawEnemy( &gw->enemies[i] );
+    }
+
+    for ( int i = 0; i < gw->powerUpQuantity; i++ ) {
+        drawPowerUp( &gw->powerUps[i] );
     }
 
     for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
@@ -198,7 +220,20 @@ void drawGameWorld( GameWorld *gw ) {
         DrawText( TextFormat( "player: x=%.1f, y=%.1f, z=%.1f", gw->player.pos.x, gw->player.pos.y, gw->player.pos.z ), 10, 30, 20, BLACK );
         DrawText( TextFormat( "active bullets: %d", gw->player.bulletQuantity ), 10, 50, 20, BLACK );
         DrawText( TextFormat( "active enemies: %d", gw->enemyQuantity ), 10, 70, 20, BLACK );
-        showCameraInfo( &gw->camera, 10, 90 );
+        DrawText( TextFormat( "active power-ups: %d", gw->powerUpQuantity ), 10, 90, 20, BLACK );
+        showCameraInfo( &gw->camera, 10, 110 );
+    }
+
+    if ( gw->player.state == PLAYER_STATE_DEAD ) {
+        DrawRectangle( 0, 0, GetScreenWidth(), GetScreenHeight(), Fade( BLACK, 0.85f ) );
+        int fontSizeDead = 60;
+        int fontSizeReset = 20;
+        const char *tDead = "YOU ARE DEAD!";
+        const char *tReset = "Start/<R> to Reset!";
+        int wDead = MeasureText( tDead, fontSizeDead );
+        int wReset = MeasureText( tReset, fontSizeReset );
+        DrawText( tDead, GetScreenWidth() / 2 - wDead / 2, GetScreenHeight() / 2 - fontSizeDead / 2 - 10, fontSizeDead, RED );
+        DrawText( tReset, GetScreenWidth() / 2 - wReset / 2, GetScreenHeight() / 2 - fontSizeReset / 2 + 30, fontSizeReset, RED );
     }
 
     EndDrawing();
@@ -541,19 +576,9 @@ void processOptionsInput( Player *player, GameWorld *gw ) {
         }
     }
 
-    if ( IsKeyPressed( KEY_R ) ) {
-        xCam = 0;
-        yCam = 25.0f;
-        zCam = 30.0f;
-        player->pos = (Vector3){ 0.0, 1.0, 0.0 };
-        player->rotationHorizontalAngle = 0.0f;
-        updatePlayerCollisionProbes( player );
-        for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
-            gw->obstacles[i].touchColor = gw->obstacles[i].color;
-        }
-        for ( int i = 0; i < gw->enemyQuantity; i++ ) {
-            gw->enemies[i].state = ENEMY_STATE_ALIVE;
-        }
+    if ( IsKeyPressed( KEY_R ) || 
+         ( IsGamepadAvailable( gamepadId ) && IsGamepadButtonPressed( gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT ) ) ) {
+        resetGameWorld( gw );
     }
 
     if ( IsKeyPressed( KEY_F ) ) {
@@ -628,7 +653,6 @@ void processPlayerInput( Player *player, CameraType cameraType, float delta, boo
     } else {
 
         // joystick
-        const int gamepadId = 0;
         if ( IsGamepadAvailable( gamepadId ) ) {
 
             // tank
@@ -783,6 +807,14 @@ void resolveCollisionEnemyGround( Enemy *enemy, Block *ground ) {
     }
 }
 
+void resolveCollisionPowerUpGround( PowerUp *powerUp, Block *ground ) {
+    if ( checkCollisionPowerUpBlock( powerUp, ground ) ==  POWER_UP_COLLISION_ALL ) {
+        powerUp->pos.y = ground->pos.y + ground->dim.y / 2 + powerUp->radius;
+        powerUp->vel.y = 0.0f;
+        jumpPowerUp( powerUp );
+    }
+}
+
 void resolveCollisionPlayerWalls( Player *player, Block *leftWall, Block *rightWall, Block *farWall, Block *nearWall ) {
 
     if ( checkCollisionPlayerBlock( player, leftWall, false ) == PLAYER_COLLISION_ALL ) {
@@ -843,6 +875,9 @@ void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy ) {
 
         if ( coll != PLAYER_COLLISION_ALL && coll != PLAYER_COLLISION_NONE ) {
             player->currentHp -= enemy->damageOnContact;
+            if ( player->currentHp == 0 ) {
+                player->state = PLAYER_STATE_DEAD;
+            }
         }
 
         switch ( coll ) {
@@ -948,40 +983,46 @@ void resolveCollisionBulletWorld( GameWorld *gw ) {
 
 }
 
-void cleanDeadEnemies( GameWorld *gw ) {
+void resolveCollisionPlayerPowerUp( Player *player, PowerUp *powerUp ) {
 
-    // naive algorithm
-    int collidedCount = 0;
-    Enemy *enemies = gw->enemies;
+    PlayerCollisionType coll = checkCollisionPlayerPowerUp( player, powerUp );
 
+    if ( coll == PLAYER_COLLISION_ALL ) {
+        playerAcquirePowerUp( player, powerUp );
+    }
+    
+}
+
+void resetGameWorld( GameWorld *gw ) {
+
+    xCam = 0;
+    yCam = 25.0f;
+    zCam = 30.0f;
+
+    gw->previousMousePos = (Vector2){0};
+
+    destroyPlayerModel( &gw->player );
+    gw->player = createPlayer();
+    updatePlayerCollisionProbes( &gw->player );
+
+    Color enemyColor = RED;
+    destroyEnemiesModel( gw->enemies, gw->enemyQuantity );
+    free( gw->enemies );
+    createEnemies( gw, enemyColor );
+
+    destroyPowerUpsModel( gw->powerUps, gw->powerUpQuantity );
+    free( gw->powerUps );
+    createPowerUps( gw );
+
+    for ( int i = 0; i < gw->obstacleQuantity; i++ ) {
+        gw->obstacles[i].touchColor = gw->obstacles[i].color;
+    }
     for ( int i = 0; i < gw->enemyQuantity; i++ ) {
-        if ( enemies[i].state == ENEMY_STATE_DEAD ) {
-            collidedCount++;
-        }
+        gw->enemies[i].state = ENEMY_STATE_ALIVE;
     }
 
-    int *collectedIds = (int*) malloc( collidedCount * sizeof( int ) );
-    int t = 0;
-
-    for ( int i = 0; i < gw->enemyQuantity; i++ ) {
-        if ( enemies[i].state == ENEMY_STATE_DEAD ) {
-            collectedIds[t++] = enemies[i].id;
-        }
-    }
-
-
-    for ( int i = 0; i < collidedCount; i++ ) {
-        for ( int j = gw->enemyQuantity-1; j >= 0; j-- ) {
-            if ( enemies[j].id == collectedIds[i] ) {
-                for ( int k = j+1; k < gw->enemyQuantity; k++ ) {
-                    enemies[k-1] = enemies[k];
-                }
-                (gw->enemyQuantity)--;
-                break;
-            }
-        }
-    }
-
-    free( collectedIds );
+    gw->cameraType = CAMERA_TYPE_FIRST_PERSON;
+    updateCameraTarget( gw, &gw->player );
+    updateCameraPosition( gw, &gw->player, xCam, yCam, zCam );
 
 }
