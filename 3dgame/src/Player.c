@@ -437,3 +437,23 @@ void playerAcquirePowerUp( Player *player, PowerUp *powerUp ) {
     }
 
 }
+
+Ray getPlayerToEnemyRay( Player *player, Enemy *enemy ) {
+
+    // https://devforum.roblox.com/t/how-to-calculate-raycast-direction/1050858
+    // rayOrigin + rayDirection = rayDestination
+
+    // aqui
+    // player->pos + direction = enemy->pos
+    // direction = enemy->pos - player->pos
+
+    return (Ray){
+        .position = player->pos,
+        .direction = {
+            .x = enemy->pos.x - player->pos.x,
+            .y = enemy->pos.y - player->pos.y,
+            .z = enemy->pos.z - player->pos.z
+        }
+    };
+
+}

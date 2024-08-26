@@ -199,6 +199,7 @@ void drawGameWorld( GameWorld *gw ) {
     
     for ( int i = 0; i < gw->enemyQuantity; i++ ) {
         drawEnemy( &gw->enemies[i] );
+        //DrawRay( getPlayerToEnemyRay( &gw->player, &gw->enemies[i] ), BLACK );
     }
 
     for ( int i = 0; i < gw->powerUpQuantity; i++ ) {

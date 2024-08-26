@@ -22,3 +22,4 @@ void playerShotBullet( Player *player );
 void cleanCollidedBullets( Player *player );
 
 void playerAcquirePowerUp( Player *player, PowerUp *powerUp );
+Ray getPlayerToEnemyRay( Player *player, Enemy *enemy );
