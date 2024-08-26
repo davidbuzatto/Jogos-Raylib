@@ -8,7 +8,13 @@
 
 /**
  * TODO: 
- *   - Ajustar movimentação com o mouse e teclas.
+ *   - Resolver tunelamento dos tiros (raycast);
+ *   - Ajustar movimentação com o mouse e teclas;
+ *   -   Modo primeira pessoa englobar tanto mouse quanto teclado ao invés de dois modos distintos;
+ *   -   Modo terceira pessoa geral;
+ *   - Melhorar criação e destruição de modelos;
+ *   -   Criar de forma global os modelos necessários e atribuir na criação;
+ *   -   Destruição desassociada das entidades;
  *   - Para a visão em terceira pessoa (aka Dark Souls, Lies of P etc.) a câmera
  *     deve ser posicionada atrás baseada em um ângulo e mirar em 180 do centro
  *     do personagem (insight apenas);
@@ -49,6 +55,9 @@ float xCam = 0.0f;
 float yCam = 25.0f;
 float zCam = 30.0f;
 
+Color enemyColor;
+Color enemyEyeColor;
+
 /*float xCam = 0.0f;
 float yCam = 9.0f;
 float zCam = 7.4f;*/
@@ -67,12 +76,14 @@ GameWorld* createGameWorld( void ) {
     GameWorld *gw = (GameWorld*) malloc( sizeof( GameWorld ) );
     Color wallColor = Fade( DARKGREEN, 0.5f );
     Color obstacleColor = LIME;
-    Color enemyColor = RED;
+
+    enemyColor = RED;
+    enemyEyeColor = (Color){ 38, 0, 82, 255 };
 
     gw->previousMousePos = (Vector2){0};
 
     gw->player = createPlayer();
-    createEnemies( gw, enemyColor );
+    createEnemies( gw, enemyColor, enemyEyeColor );
     createPowerUps( gw );
 
     gw->ground = createGround( blockSize, lines, columns );
@@ -153,7 +164,7 @@ void inputAndUpdateGameWorld( GameWorld *gw ) {
                     jumpEnemy( enemy );
                 }
             }
-            updateEnemy( enemy, delta );
+            updateEnemy( enemy, player, delta );
             updateEnemyCollisionProbes( enemy );
             resolveCollisionEnemyObstacles( enemy, gw );
             resolveCollisionEnemyGround( enemy, ground );
@@ -586,6 +597,10 @@ void processOptionsInput( Player *player, GameWorld *gw ) {
         gw->cameraType = ct % CAMERA_TYPE_QUANTITY;
     }
 
+    if ( IsKeyPressed( KEY_I ) ) {
+        player->immortal = !player->immortal;
+    }
+
 }
 
 void processCameraInput( float *xCam, float *yCam, float *zCam ) {
@@ -873,7 +888,7 @@ void resolveCollisionPlayerEnemy( Player *player, Enemy *enemy ) {
 
         PlayerCollisionType coll = checkCollisionPlayerEnemy( player, enemy, true );
 
-        if ( coll != PLAYER_COLLISION_ALL && coll != PLAYER_COLLISION_NONE ) {
+        if ( !player->immortal && coll != PLAYER_COLLISION_ALL && coll != PLAYER_COLLISION_NONE ) {
             player->currentHp -= enemy->damageOnContact;
             if ( player->currentHp == 0 ) {
                 player->state = PLAYER_STATE_DEAD;
@@ -1005,10 +1020,9 @@ void resetGameWorld( GameWorld *gw ) {
     gw->player = createPlayer();
     updatePlayerCollisionProbes( &gw->player );
 
-    Color enemyColor = RED;
     destroyEnemiesModel( gw->enemies, gw->enemyQuantity );
     free( gw->enemies );
-    createEnemies( gw, enemyColor );
+    createEnemies( gw, enemyColor, enemyEyeColor );
 
     destroyPowerUpsModel( gw->powerUps, gw->powerUpQuantity );
     free( gw->powerUps );

@@ -199,6 +199,8 @@ typedef struct Player {
 
     int maxHp;
     int currentHp;
+    bool immortal;
+    
     int currentAmmo;
 
     PlayerState state;
@@ -220,6 +222,7 @@ typedef struct Enemy {
     float jumpSpeed;
 
     Color color;
+    Color eyeColor;
     bool showWiresOnly;
     bool showCollisionProbes;
 

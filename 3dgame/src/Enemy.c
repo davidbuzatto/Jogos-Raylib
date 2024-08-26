@@ -8,7 +8,7 @@
 #include "Enemy.h"
 #include "raylib.h"
 
-Enemy createEnemy( Vector3 pos, Color color ) {
+Enemy createEnemy( Vector3 pos, Color color, Color eyeColor ) {
 
     float cpThickness = 1.0f;
     float cpDiff = 0.7f;
@@ -35,6 +35,7 @@ Enemy createEnemy( Vector3 pos, Color color ) {
         .speed = 20.0f,
         .jumpSpeed = 20.0f,
         .color = color,
+        .eyeColor = eyeColor,
         .showWiresOnly = false,
         .showCollisionProbes = false,
 
@@ -100,7 +101,31 @@ void drawEnemy( Enemy *enemy ) {
     }
 
     if ( !enemy->showWiresOnly ) {
+
         DrawModelEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, enemy->color );
+
+        float a = 45.0f;
+
+        DrawSphere(
+            (Vector3){
+                .x = enemy->pos.x - cos( DEG2RAD * ( enemy->rotationHorizontalAngle + a ) ) * 1.0f,
+                .y = enemy->pos.y + 1.0f,
+                .z = enemy->pos.z + sin( DEG2RAD * ( enemy->rotationHorizontalAngle + a ) ) * 1.0f,
+            },
+            0.5f, 
+            enemy->eyeColor
+        );
+
+        DrawSphere(
+            (Vector3){
+                .x = enemy->pos.x - cos( DEG2RAD * ( enemy->rotationHorizontalAngle - a ) ) * 1.0f,
+                .y = enemy->pos.y + 1.0f,
+                .z = enemy->pos.z + sin( DEG2RAD * ( enemy->rotationHorizontalAngle - a ) ) * 1.0f,
+            },
+            0.5f, 
+            enemy->eyeColor
+        );
+
     }
 
     DrawModelWiresEx( enemy->model, enemy->pos, enemy->rotationAxis, enemy->rotationHorizontalAngle, enemy->scale, BLACK );
@@ -125,7 +150,7 @@ void drawEnemyHpBar( Enemy *enemy, Camera3D camera ) {
 
 }
 
-void updateEnemy( Enemy *enemy, float delta ) {
+void updateEnemy( Enemy *enemy, Player *player, float delta ) {
 
     enemy->lastPos = enemy->pos;
 
@@ -152,6 +177,8 @@ void updateEnemy( Enemy *enemy, float delta ) {
             enemy->showHpBar = false;
         }
     }
+
+    enemy->rotationHorizontalAngle = - ( RAD2DEG * atan2( enemy->pos.z - player->pos.z, enemy->pos.x - player->pos.x ) );
 
 }
 
@@ -269,7 +296,7 @@ void destroyEnemyModel( Enemy *enemy ) {
     UnloadModel( enemy->model );
 }
 
-void createEnemies( GameWorld *gw, Color enemyColor ) {
+void createEnemies( GameWorld *gw, Color color, Color eyeColor ) {
 
     gw->enemyQuantity = 26;
     gw->enemies = (Enemy*) malloc( sizeof( Enemy ) * gw->enemyQuantity );
@@ -314,7 +341,7 @@ void createEnemies( GameWorld *gw, Color enemyColor ) {
     };
 
     for ( int i = 0; i < gw->enemyQuantity; i++ ) {
-        gw->enemies[i] = createEnemy( positions[i], enemyColor );
+        gw->enemies[i] = createEnemy( positions[i], color, eyeColor );
     }
 
     createEnemiesModel( gw->enemies, gw->enemyQuantity );

@@ -80,6 +80,8 @@ Player createPlayer() {
 
         .maxHp = 100,
         .currentHp = 100,
+        .immortal = false,
+
         .currentAmmo = 200,
         .state = PLAYER_STATE_ALIVE
 
@@ -133,10 +135,15 @@ void drawPlayerHud( Player *player ) {
     int h = GetScreenHeight();
     int xMargin = 10;
     int yMargin = 10;
-    double t = (float) player->currentHp / player->maxHp;
+    float t = (float) player->currentHp / player->maxHp;
+    int hpBarWidth = 140;
 
-    DrawRectangle( xMargin, h - yMargin - 47, (int) 140.0f * t, 20, interpolate3Color( RED, ORANGE, LIME, t ) );
-    DrawRectangleLines( xMargin, h - yMargin - 47, 140, 20, BLACK );
+    DrawRectangle( xMargin, h - yMargin - 47, (int) ( hpBarWidth * t ), 20, interpolate3Color( RED, ORANGE, LIME, t ) );
+    DrawRectangleLines( xMargin, h - yMargin - 47, hpBarWidth, 20, BLACK );
+
+    if ( player->immortal ) {
+        DrawText( "* immortal *", xMargin * 2, h - yMargin - 46, 20, BLACK );
+    }
 
     DrawText( TextFormat( "Ammo: %d", player->currentAmmo ), xMargin, h - yMargin - 20, 20, player->currentAmmo > 0 ? BLACK : MAROON );
 
