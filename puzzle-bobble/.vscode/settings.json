@@ -48,7 +48,7 @@
     "accessibility.signals.diffLineModified": {
         "sound": "off"
     },
-    "accessibility.signals.chatResponsePending": {
+    "accessibility.signals.progress": {
         "sound": "off"
     }
 }
